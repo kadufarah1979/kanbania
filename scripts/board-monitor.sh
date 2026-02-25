@@ -1,31 +1,52 @@
 #!/usr/bin/env bash
-# AquaBook Kanban Board Monitor
-# Monitors all board columns, sends GNOME notifications on status changes,
-# and writes trigger files for tasks entering review.
+# board-monitor.sh — Monitors all board columns, sends notifications on status
+# changes, and writes trigger files for tasks entering review.
+#
+# Usage: board-monitor.sh [--interval <seconds>]
 
 set -euo pipefail
 shopt -s nullglob
 
-BOARD_DIR="/home/carlosfarah/kanbania/board"
-SCRIPTS_DIR="/home/carlosfarah/kanbania/scripts"
-TRIGGER_DIR="/tmp/aquabook-review-triggers"
-COLUMNS=("backlog" "in-progress" "review" "done")
+# ── Config ────────────────────────────────────────────────────────────────────
+
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPTS_DIR/lib/config.sh"
+
+BOARD_DIR="$KANBAN_ROOT/board"
+
+# System name for log files and trigger dir (no hardcoded "aquabook")
+SYSTEM_NAME="$(cfg '.system.name' 'kanbania' | tr '[:upper:] ' '[:lower:]-')"
+
+TRIGGER_DIR="/tmp/${SYSTEM_NAME}-review-triggers"
+TRIGGER_LOG="/tmp/${SYSTEM_NAME}-trigger.log"
 POLL_INTERVAL=10
+
+# Load columns from config
+mapfile -t COLUMNS < <(get_columns)
+
+# ── Flags ────────────────────────────────────────────────────────────────────
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --interval) POLL_INTERVAL="${2:?missing value for --interval}"; shift 2 ;;
+    *) echo "[board-monitor] Unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
 
 mkdir -p "$TRIGGER_DIR"
 
-update_status() {
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+update_agent_status() {
   "$SCRIPTS_DIR/update-agent-status.sh" "$@" 2>/dev/null || true
 }
-
-declare -A TASK_STATUS
 
 status_label() {
   case "$1" in
     backlog)     echo "Backlog" ;;
-    in-progress) echo "Em Progresso" ;;
-    review)      echo "Em Review" ;;
-    done)        echo "Concluida" ;;
+    in-progress) echo "In Progress" ;;
+    review)      echo "In Review" ;;
+    done)        echo "Done" ;;
     *)           echo "$1" ;;
   esac
 }
@@ -70,7 +91,23 @@ scan_column() {
   done
 }
 
-# Initial snapshot (no notifications on startup)
+# Get the configured reviewer agent names (one per line)
+_reviewers="$(get_reviewers)"
+
+# Detect if a reviewer agent name appears in review_requested_from field
+has_reviewer_pending() {
+  local file="$1"
+  local reviewer
+  while IFS= read -r reviewer; do
+    grep -q "review_requested_from:.*${reviewer}" "$file" 2>/dev/null && return 0
+  done <<< "$_reviewers"
+  return 1
+}
+
+# ── Initial snapshot (no notifications on startup) ───────────────────────────
+
+declare -A TASK_STATUS
+
 for col in "${COLUMNS[@]}"; do
   while IFS='=' read -r task col_val; do
     TASK_STATUS["$task"]="$col_val"
@@ -79,6 +116,8 @@ done
 
 echo "[$(date -Iseconds)] Board monitor started. Tracking ${#TASK_STATUS[@]} tasks."
 echo "[$(date -Iseconds)] Polling every ${POLL_INTERVAL}s. Trigger dir: $TRIGGER_DIR"
+
+# ── Main poll loop ────────────────────────────────────────────────────────────
 
 while true; do
   sleep "$POLL_INTERVAL"
@@ -103,85 +142,99 @@ while true; do
       new_label=$(status_label "$new_col")
       icon=$(status_icon "$new_col")
       urgency=$(status_urgency "$new_col")
+      system_label="$(cfg '.system.name' 'Kanbania')"
 
       if [ -z "$old_col" ]; then
-        summary="AquaBook - Nova Task"
-        body="${task}: ${title} | Status: ${new_label} | Responsavel: ${assigned}"
+        summary="${system_label} - New Task"
+        body="${task}: ${title} | Status: ${new_label} | Assigned: ${assigned}"
       else
         old_label=$(status_label "$old_col")
-        summary="AquaBook - Status Alterado"
-        body="${task}: ${title} | ${old_label} -> ${new_label} | Responsavel: ${assigned}"
+        summary="${system_label} - Status Changed"
+        body="${task}: ${title} | ${old_label} -> ${new_label} | Assigned: ${assigned}"
       fi
 
-      notify-send -u "$urgency" -i "$icon" -a "AquaBook Kanban" "$summary" "$body" 2>/dev/null
+      notify "$urgency" "$summary" "$body"
       echo "[$(date -Iseconds)] $task: ${old_col:-new} -> $new_col ($title)"
 
-      # Trigger codex QA when task enters review with review_requested_from: [codex]
-      if [ "$new_col" = "review" ] && grep -q 'review_requested_from:.*codex' "$file" 2>/dev/null; then
+      # Trigger reviewer agent QA when task enters review
+      if [ "$new_col" = "review" ] && has_reviewer_pending "$file"; then
         echo "$task" > "$TRIGGER_DIR/$task"
-        echo "[$(date -Iseconds)] TRIGGER: $task entered review, launching codex QA"
-        nohup "$SCRIPTS_DIR/trigger-codex-review.sh" "$task" >> /tmp/aquabook-codex-trigger.log 2>&1 &
+        echo "[$(date -Iseconds)] TRIGGER: $task entered review, launching reviewer agent"
+        if [ -x "$SCRIPTS_DIR/trigger-agent-review.sh" ]; then
+          nohup "$SCRIPTS_DIR/trigger-agent-review.sh" "$task" >> "$TRIGGER_LOG" 2>&1 &
+        fi
       fi
 
-      # Update codex status when task moves to in-progress
-      if [ "$new_col" = "in-progress" ] && [ "$assigned" = "codex" ]; then
-        update_status "codex" "working" "$task" "Trabalhando: $title"
+      # Update reviewer agent status when task moves to in-progress
+      local_reviewer_agent="$(get_reviewers | head -1)"
+      if [ "$new_col" = "in-progress" ] && [ "$assigned" = "$local_reviewer_agent" ]; then
+        update_agent_status "$local_reviewer_agent" "working" "$task" "Working: $title"
       fi
 
-      # Reset claude-code to idle when review moves to done or in-progress
+      # Reset implementer to idle when review column empties
       if [ "$old_col" = "review" ] && [ "$new_col" != "review" ]; then
         review_count=$(ls "$BOARD_DIR/review"/*.md 2>/dev/null | wc -l || echo 0)
         if [ "$review_count" -eq 0 ]; then
-          update_status "claude-code" "idle" "" "Aguardando tarefas em review"
+          update_agent_status "$KB_AGENT" "idle" "" "Waiting for review tasks"
         fi
       fi
 
       # Trigger CI/CD re-deploy when a cicd-fix task moves to done
       if [ "$new_col" = "done" ] && grep -q 'labels:.*cicd-fix' "$file" 2>/dev/null; then
         echo "[$(date -Iseconds)] TRIGGER: cicd-fix $task approved, triggering pipeline re-deploy"
-        nohup "$SCRIPTS_DIR/cicd-trigger-pipeline.sh" "$task" >> /tmp/aquabook-cicd-trigger.log 2>&1 &
-      fi
-
-      # Merge codex worktree into main when a task moves to done
-      if [ "$new_col" = "done" ]; then
-        echo "[$(date -Iseconds)] Merging codex worktree into main..."
-        "$SCRIPTS_DIR/sync-codex-worktree.sh" merge >> /tmp/aquabook-codex-trigger.log 2>&1 || true
-        # Check no codex task is already in-progress
-        codex_in_progress=false
-        for ip_file in "$BOARD_DIR/in-progress"/*.md; do
-          ip_assigned=$(get_task_assigned "$ip_file")
-          if [ "$ip_assigned" = "codex" ]; then
-            codex_in_progress=true
-            break
-          fi
-        done
-        if ! $codex_in_progress; then
-          echo "[$(date -Iseconds)] TRIGGER: task done, launching Codex for next task"
-          nohup "$SCRIPTS_DIR/trigger-codex-next.sh" >> /tmp/aquabook-codex-trigger.log 2>&1 &
+        if [ -x "$SCRIPTS_DIR/cicd-trigger-pipeline.sh" ]; then
+          nohup "$SCRIPTS_DIR/cicd-trigger-pipeline.sh" "$task" >> "$TRIGGER_LOG" 2>&1 &
         fi
       fi
 
-      # Trigger Codex fix when task moves back to in-progress with changes_requested
-      if [ "$new_col" = "in-progress" ] && [ "$assigned" = "codex" ]; then
+      # Merge reviewer worktree into main when a task moves to done
+      if [ "$new_col" = "done" ]; then
+        echo "[$(date -Iseconds)] Merging reviewer worktree into main..."
+        if [ -x "$SCRIPTS_DIR/sync-agent-worktree.sh" ]; then
+          "$SCRIPTS_DIR/sync-agent-worktree.sh" merge >> "$TRIGGER_LOG" 2>&1 || true
+        fi
+        # Check no reviewer task is already in-progress
+        reviewer_in_progress=false
+        for ip_file in "$BOARD_DIR/in-progress"/*.md; do
+          ip_assigned=$(get_task_assigned "$ip_file")
+          if [ "$ip_assigned" = "$local_reviewer_agent" ]; then
+            reviewer_in_progress=true
+            break
+          fi
+        done
+        if ! $reviewer_in_progress; then
+          echo "[$(date -Iseconds)] TRIGGER: task done, launching reviewer agent for next task"
+          if [ -x "$SCRIPTS_DIR/trigger-agent-next.sh" ]; then
+            nohup "$SCRIPTS_DIR/trigger-agent-next.sh" >> "$TRIGGER_LOG" 2>&1 &
+          fi
+        fi
+      fi
+
+      # Trigger reviewer fix when task moves back to in-progress with changes_requested
+      if [ "$new_col" = "in-progress" ] && [ "$assigned" = "$local_reviewer_agent" ]; then
         last_action=$(grep 'action:' "$file" | head -1 | sed 's/.*action: *//')
         if [ "$last_action" = "changes_requested" ]; then
-          echo "[$(date -Iseconds)] TRIGGER: changes requested, launching Codex fix for $task"
-          nohup "$SCRIPTS_DIR/trigger-codex-fix.sh" "$task" >> /tmp/aquabook-codex-trigger.log 2>&1 &
+          echo "[$(date -Iseconds)] TRIGGER: changes requested, launching reviewer fix for $task"
+          if [ -x "$SCRIPTS_DIR/trigger-agent-fix.sh" ]; then
+            nohup "$SCRIPTS_DIR/trigger-agent-fix.sh" "$task" >> "$TRIGGER_LOG" 2>&1 &
+          fi
         fi
       fi
     fi
   done
 
-  # QA sweep: check if any review cards with codex pending haven't been triggered yet
+  # QA sweep: check if any review cards with reviewer pending haven't been triggered yet
   for f in "$BOARD_DIR/review"/*.md; do
     [ -f "$f" ] || continue
-    grep -q 'review_requested_from:.*codex' "$f" || continue
+    has_reviewer_pending "$f" || continue
     task_id=$(basename "$f" .md)
     # Skip if already triggered this session
     [ -f "$TRIGGER_DIR/$task_id" ] && continue
-    echo "[$(date -Iseconds)] TRIGGER: $task_id pending codex review (sweep)"
+    echo "[$(date -Iseconds)] TRIGGER: $task_id pending reviewer (sweep)"
     echo "$task_id" > "$TRIGGER_DIR/$task_id"
-    nohup "$SCRIPTS_DIR/trigger-codex-review.sh" "$task_id" >> /tmp/aquabook-codex-trigger.log 2>&1 &
+    if [ -x "$SCRIPTS_DIR/trigger-agent-review.sh" ]; then
+      nohup "$SCRIPTS_DIR/trigger-agent-review.sh" "$task_id" >> "$TRIGGER_LOG" 2>&1 &
+    fi
   done
 
   # Detect removed tasks

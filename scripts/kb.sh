@@ -3,19 +3,25 @@
 # Reduces per-task transitions from ~15 manual operations to 1 command.
 #
 # Usage: kb [--dry-run] [--no-commit] [--no-push] [--confirm] <command> [args...]
-# Commands: claim, review, approve, resubmit, status, batch-review, help
+# Commands: claim, review, approve, resubmit, status, batch-review, complete-sprint, help
 
 set -euo pipefail
 
-# ── Constants ────────────────────────────────────────────────────────────────
+# ── Config ────────────────────────────────────────────────────────────────────
 
-KANBAN_DIR="/home/carlosfarah/kanbania"
-BOARD_DIR="$KANBAN_DIR/board"
-LOGS_DIR="$KANBAN_DIR/logs"
-SCRIPTS_DIR="$KANBAN_DIR/scripts"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPTS_DIR/lib/config.sh"
+
+BOARD_DIR="$KANBAN_ROOT/board"
+LOGS_DIR="$KANBAN_ROOT/logs"
 LOCK_DIR="/tmp/kb-locks"
 GLOBAL_LOCK_FILE="$LOCK_DIR/board-global.lock"
-AGENT="claude-code"
+
+# Load columns from config once at startup
+mapfile -t _ALL_COLUMNS < <(get_columns)
+
+# Build reviewer list for YAML frontmatter: [agent1, agent2]
+_REVIEWERS_YAML="[$(get_reviewers | paste -sd ',' | sed 's/,/, /g')]"
 
 # ── Flags ────────────────────────────────────────────────────────────────────
 
@@ -26,10 +32,11 @@ CONFIRM=false
 
 # ── Utilities ────────────────────────────────────────────────────────────────
 
-now() { date -Iseconds | sed 's/+00:00$/-03:00/'; }
+now() { date -Iseconds; }
 
 log_info()  { echo "[kb] $*"; }
 log_error() { echo "[kb] ERROR: $*" >&2; }
+log_warn()  { echo "[kb] WARN: $*" >&2; }
 die()       { log_error "$@"; exit 1; }
 
 run() {
@@ -44,7 +51,8 @@ run() {
 
 find_task_column() {
   local task_id="$1"
-  for col in backlog todo in-progress review done; do
+  local col
+  for col in "${_ALL_COLUMNS[@]}"; do
     if [ -f "$BOARD_DIR/$col/$task_id.md" ]; then
       echo "$col"
       return 0
@@ -76,7 +84,7 @@ require_clean_git() {
     return 0
   fi
   local status
-  status=$(git -C "$KANBAN_DIR" status --porcelain)
+  status=$(git -C "$KANBAN_ROOT" status --porcelain)
   if [ -n "$status" ]; then
     die "Kanban repo has uncommitted changes. Commit or stash first.\n$status"
   fi
@@ -87,7 +95,7 @@ require_sync_ready() {
     return 0
   fi
   [ -x "$SCRIPTS_DIR/kanban-sync-check.sh" ] || die "Missing sync checker: $SCRIPTS_DIR/kanban-sync-check.sh"
-  "$SCRIPTS_DIR/kanban-sync-check.sh" --repo "$KANBAN_DIR"
+  "$SCRIPTS_DIR/kanban-sync-check.sh" --repo "$KANBAN_ROOT"
 }
 
 # ── Locking ──────────────────────────────────────────────────────────────────
@@ -151,7 +159,7 @@ fm_set_or_add_version() {
     sed -i "s/^version:.*/version: $value/" "$file"
     return 0
   fi
-  # Keep backward compatibility: inject version close to id for stable frontmatter shape.
+  # Inject version close to id for stable frontmatter shape.
   awk -v value="$value" '
     /^id:/ && !inserted {
       print $0
@@ -212,10 +220,8 @@ append_activity() {
     log_info "[dry-run] append_activity $task_id $action"
     return 0
   fi
-  local title
-  # Try to extract title from whatever column the card is in
-  local card_file
-  for col in backlog in-progress review done; do
+  local title card_file col
+  for col in "${_ALL_COLUMNS[@]}"; do
     if [ -f "$BOARD_DIR/$col/$task_id.md" ]; then
       card_file="$BOARD_DIR/$col/$task_id.md"
       break
@@ -233,9 +239,10 @@ append_activity() {
     details="$action: $title"
   fi
 
+  mkdir -p "$LOGS_DIR"
   jq -cn \
     --arg ts "$ts" \
-    --arg agent "$AGENT" \
+    --arg agent "$KB_AGENT" \
     --arg action "$action" \
     --arg entity_id "$task_id" \
     --arg details "$details" \
@@ -253,9 +260,8 @@ append_conflict() {
     log_info "[dry-run] append_conflict $task_id $details"
     return 0
   fi
-  local project="unknown"
-  local card_file
-  for col in backlog todo in-progress review done; do
+  local project="unknown" card_file col
+  for col in "${_ALL_COLUMNS[@]}"; do
     if [ -f "$BOARD_DIR/$col/$task_id.md" ]; then
       card_file="$BOARD_DIR/$col/$task_id.md"
       break
@@ -264,9 +270,10 @@ append_conflict() {
   if [ -n "${card_file:-}" ]; then
     project=$(grep '^project:' "$card_file" | sed 's/^project: *//' | head -1)
   fi
+  mkdir -p "$LOGS_DIR"
   jq -cn \
     --arg ts "$ts" \
-    --arg agent "$AGENT" \
+    --arg agent "$KB_AGENT" \
     --arg entity_id "$task_id" \
     --arg details "$details" \
     --arg project "$project" \
@@ -280,11 +287,11 @@ kb_push_with_retry() {
   local attempts=3
   local i
   for i in $(seq 1 $attempts); do
-    if git -C "$KANBAN_DIR" push 2>/dev/null; then
+    if git -C "$KANBAN_ROOT" push 2>/dev/null; then
       return 0
     fi
     log_info "[push] Attempt $i failed (non-fast-forward). Rebasing..."
-    git -C "$KANBAN_DIR" pull --rebase origin main
+    git -C "$KANBAN_ROOT" pull --rebase origin main
   done
   log_info "[push] All $attempts attempts failed. Registering in activity.jsonl."
   return 1
@@ -300,8 +307,8 @@ kb_commit() {
     fi
     return 0
   fi
-  git -C "$KANBAN_DIR" add -A
-  git -C "$KANBAN_DIR" commit -m "$msg"
+  git -C "$KANBAN_ROOT" add -A
+  git -C "$KANBAN_ROOT" commit -m "$msg"
   if ! $NO_PUSH; then
     kb_push_with_retry
   else
@@ -311,9 +318,8 @@ kb_commit() {
 
 ensure_task_unique() {
   local task_id="$1"
-  local hits=0
-  local col
-  for col in backlog todo in-progress review done; do
+  local hits=0 col
+  for col in "${_ALL_COLUMNS[@]}"; do
     if [ -f "$BOARD_DIR/$col/$task_id.md" ]; then
       hits=$((hits + 1))
     fi
@@ -353,8 +359,8 @@ cmd_claim() {
 
   # Idempotency: already in in-progress with correct assignment
   if [ -f "$BOARD_DIR/in-progress/$task_id.md" ]; then
-    if grep -q "^assigned_to: $AGENT" "$BOARD_DIR/in-progress/$task_id.md"; then
-      log_info "$task_id already in in-progress (assigned to $AGENT)"
+    if grep -q "^assigned_to: $KB_AGENT" "$BOARD_DIR/in-progress/$task_id.md"; then
+      log_info "$task_id already in in-progress (assigned to $KB_AGENT)"
       exit 0
     fi
   fi
@@ -379,8 +385,8 @@ cmd_claim() {
 
   if ! $DRY_RUN; then
     require_version_unchanged "$dst" "$expected_version"
-    fm_set "$dst" "assigned_to" "$AGENT"
-    fm_append_acted "$dst" "$AGENT" "claimed"
+    fm_set "$dst" "assigned_to" "$KB_AGENT"
+    fm_append_acted "$dst" "$KB_AGENT" "claimed"
     fm_bump_version "$dst"
   fi
 
@@ -415,20 +421,24 @@ cmd_review() {
   if ! $DRY_RUN; then
     require_version_unchanged "$dst" "$expected_version"
     fm_set "$dst" "assigned_to" "null"
-    fm_set "$dst" "review_requested_from" "[codex]"
-    fm_append_acted "$dst" "$AGENT" "moved_to_review"
+    fm_set "$dst" "review_requested_from" "$_REVIEWERS_YAML"
+    fm_append_acted "$dst" "$KB_AGENT" "moved_to_review"
     fm_bump_version "$dst"
   fi
 
   append_activity "$task_id" "moved_to_review"
   kb_commit "review $task_id: in-progress -> review"
 
-  # Trigger codex review in background (non-fatal)
+  # Trigger agent review in background (non-fatal)
   if ! $DRY_RUN; then
-    log_info "Triggering codex review for $task_id..."
-    bash "$SCRIPTS_DIR/trigger-codex-review.sh" "$task_id" 200>&- &
+    if [ -x "$SCRIPTS_DIR/trigger-agent-review.sh" ]; then
+      log_info "Triggering agent review for $task_id..."
+      bash "$SCRIPTS_DIR/trigger-agent-review.sh" "$task_id" 200>&- &
+    else
+      log_info "No trigger-agent-review.sh found; skipping auto-trigger"
+    fi
   else
-    log_info "[dry-run] Would trigger codex review for $task_id"
+    log_info "[dry-run] Would trigger agent review for $task_id"
   fi
 
   log_info "$task_id moved to review: in-progress -> review"
@@ -443,8 +453,8 @@ cmd_approve() {
   # Idempotency: already approved by this agent
   if [ -f "$BOARD_DIR/review/$task_id.md" ]; then
     if grep -q "action: approved" "$BOARD_DIR/review/$task_id.md" && \
-       grep -B1 "action: approved" "$BOARD_DIR/review/$task_id.md" | grep -q "agent: $AGENT"; then
-      log_info "$task_id already approved by $AGENT"
+       grep -B1 "action: approved" "$BOARD_DIR/review/$task_id.md" | grep -q "agent: $KB_AGENT"; then
+      log_info "$task_id already approved by $KB_AGENT"
       exit 0
     fi
   fi
@@ -457,14 +467,14 @@ cmd_approve() {
 
   if ! $DRY_RUN; then
     require_version_unchanged "$file" "$expected_version"
-    fm_append_acted "$file" "$AGENT" "approved"
+    fm_append_acted "$file" "$KB_AGENT" "approved"
     fm_bump_version "$file"
   fi
 
   append_activity "$task_id" "approved"
-  kb_commit "approve $task_id: $AGENT approved"
+  kb_commit "approve $task_id: $KB_AGENT approved"
 
-  log_info "$task_id approved by $AGENT"
+  log_info "$task_id approved by $KB_AGENT"
 }
 
 cmd_resubmit() {
@@ -481,41 +491,41 @@ cmd_resubmit() {
 
   if ! $DRY_RUN; then
     require_version_unchanged "$file" "$expected_version"
-    fm_append_acted "$file" "$AGENT" "resubmitted"
+    fm_append_acted "$file" "$KB_AGENT" "resubmitted"
     fm_bump_version "$file"
   fi
 
-  append_activity "$task_id" "resubmitted" "re-triggered codex review after fix"
-  kb_commit "resubmit $task_id: re-triggered codex review"
+  append_activity "$task_id" "resubmitted" "re-triggered agent review after fix"
+  kb_commit "resubmit $task_id: re-triggered agent review"
 
-  # Trigger codex review in background (non-fatal)
+  # Trigger agent review in background (non-fatal)
   if ! $DRY_RUN; then
-    log_info "Re-triggering codex review for $task_id..."
-    bash "$SCRIPTS_DIR/trigger-codex-review.sh" "$task_id" 200>&- &
+    if [ -x "$SCRIPTS_DIR/trigger-agent-review.sh" ]; then
+      log_info "Re-triggering agent review for $task_id..."
+      bash "$SCRIPTS_DIR/trigger-agent-review.sh" "$task_id" 200>&- &
+    else
+      log_info "No trigger-agent-review.sh found; skipping auto-trigger"
+    fi
   else
-    log_info "[dry-run] Would trigger codex review for $task_id"
+    log_info "[dry-run] Would trigger agent review for $task_id"
   fi
 
-  log_info "$task_id resubmitted for codex review"
+  log_info "$task_id resubmitted for agent review"
 }
 
 cmd_status() {
-  local backlog_count=0 inprogress_count=0 review_count=0 done_count=0
-
-  # Count cards per column
-  for f in "$BOARD_DIR/backlog"/*.md; do [ -f "$f" ] && ((backlog_count++)) || true; done
-  for f in "$BOARD_DIR/in-progress"/*.md; do [ -f "$f" ] && ((inprogress_count++)) || true; done
-  for f in "$BOARD_DIR/review"/*.md; do [ -f "$f" ] && ((review_count++)) || true; done
-  for f in "$BOARD_DIR/done"/*.md; do [ -f "$f" ] && ((done_count++)) || true; done
-
   echo "=== Kanban Board ==="
-  echo "  backlog:     $backlog_count"
-  echo "  in-progress: $inprogress_count"
-  echo "  review:      $review_count"
-  echo "  done:        $done_count"
+  local col count
+  for col in "${_ALL_COLUMNS[@]}"; do
+    count=0
+    for f in "$BOARD_DIR/$col"/*.md; do [ -f "$f" ] && count=$((count + 1)) || true; done
+    printf "  %-14s %d\n" "${col}:" "$count"
+  done
   echo ""
 
   # In-progress details
+  local inprogress_count=0
+  for f in "$BOARD_DIR/in-progress"/*.md; do [ -f "$f" ] && inprogress_count=$((inprogress_count + 1)) || true; done
   if [ "$inprogress_count" -gt 0 ]; then
     echo "── In Progress ──"
     for f in "$BOARD_DIR/in-progress"/*.md; do
@@ -530,6 +540,8 @@ cmd_status() {
   fi
 
   # Review details
+  local review_count=0
+  for f in "$BOARD_DIR/review"/*.md; do [ -f "$f" ] && review_count=$((review_count + 1)) || true; done
   if [ "$review_count" -gt 0 ]; then
     echo "── In Review ──"
     for f in "$BOARD_DIR/review"/*.md; do
@@ -547,6 +559,8 @@ cmd_status() {
   fi
 
   # Backlog details
+  local backlog_count=0
+  for f in "$BOARD_DIR/backlog"/*.md; do [ -f "$f" ] && backlog_count=$((backlog_count + 1)) || true; done
   if [ "$backlog_count" -gt 0 ]; then
     echo "── Backlog ──"
     for f in "$BOARD_DIR/backlog"/*.md; do
@@ -588,7 +602,7 @@ cmd_batch_review() {
   local moved=0
   for tid in "${tasks[@]}"; do
     cmd_review "$tid"
-    ((moved++))
+    moved=$((moved + 1))
   done
 
   log_info "batch-review complete: $moved tasks moved to review"
@@ -596,7 +610,7 @@ cmd_batch_review() {
 
 cmd_complete_sprint() {
   local sprint_id="$1"
-  local sprint_file="$KANBAN_DIR/sprints/$sprint_id.md"
+  local sprint_file="$KANBAN_ROOT/sprints/$sprint_id.md"
 
   [ -f "$sprint_file" ] || die "Sprint file not found: $sprint_file"
 
@@ -624,28 +638,28 @@ cmd_complete_sprint() {
     local task_sprint
     task_sprint=$(grep -m1 "^sprint:" "$task_file" | awk '{print $2}' | tr -d '"')
     if [ "$task_sprint" = "$sprint_id" ]; then
-      mkdir -p "$KANBAN_DIR/archive/board/done"
-      mv "$task_file" "$KANBAN_DIR/archive/board/done/"
-      ((archived_count++))
+      mkdir -p "$KANBAN_ROOT/archive/board/done"
+      mv "$task_file" "$KANBAN_ROOT/archive/board/done/"
+      archived_count=$((archived_count + 1))
     fi
   done
   log_info "Archived $archived_count done tasks"
 
   # 3. Archive the sprint file
-  mkdir -p "$KANBAN_DIR/archive/sprints"
-  cp "$sprint_file" "$KANBAN_DIR/archive/sprints/"
-  mv "$sprint_file" "$KANBAN_DIR/archive/sprints/$sprint_id.md" 2>/dev/null || true
+  mkdir -p "$KANBAN_ROOT/archive/sprints"
+  cp "$sprint_file" "$KANBAN_ROOT/archive/sprints/"
+  mv "$sprint_file" "$KANBAN_ROOT/archive/sprints/$sprint_id.md" 2>/dev/null || true
   log_info "Sprint file archived"
 
   # 4. Check if all sprints of linked OKRs are completed
   local okr_ids
-  okr_ids=$(grep -m1 "^okrs:" "$KANBAN_DIR/archive/sprints/$sprint_id.md" | sed 's/^okrs: *//' | tr -d '[]"' | tr ',' ' ')
+  okr_ids=$(grep -m1 "^okrs:" "$KANBAN_ROOT/archive/sprints/$sprint_id.md" | sed 's/^okrs: *//' | tr -d '[]"' | tr ',' ' ')
 
   for okr_id in $okr_ids; do
     okr_id=$(echo "$okr_id" | xargs) # trim
     [ -n "$okr_id" ] || continue
 
-    local okr_file="$KANBAN_DIR/okrs/$okr_id.md"
+    local okr_file="$KANBAN_ROOT/okrs/$okr_id.md"
     [ -f "$okr_file" ] || continue
 
     local okr_status
@@ -654,7 +668,7 @@ cmd_complete_sprint() {
 
     # Find all sprints linked to this OKR
     local all_completed=true
-    for sf in "$KANBAN_DIR/sprints"/sprint-*.md "$KANBAN_DIR/archive/sprints"/sprint-*.md; do
+    for sf in "$KANBAN_ROOT/sprints"/sprint-*.md "$KANBAN_ROOT/archive/sprints"/sprint-*.md; do
       [ -f "$sf" ] || continue
       local sf_okrs
       sf_okrs=$(grep -m1 "^okrs:" "$sf" | tr -d '[]"')
@@ -678,11 +692,10 @@ cmd_complete_sprint() {
 
   # 5. Commit
   if [ "$NO_COMMIT" = false ]; then
-    cd "$KANBAN_DIR"
-    git add -A
-    git commit -m "[KANBAN] complete $sprint_id: encerrar sprint"
+    git -C "$KANBAN_ROOT" add -A
+    git -C "$KANBAN_ROOT" commit -m "[KANBAN] complete $sprint_id: encerrar sprint"
     if [ "$NO_PUSH" = false ]; then
-      git push || log_warn "Push failed, will retry later"
+      git -C "$KANBAN_ROOT" push || log_warn "Push failed, will retry later"
     fi
   fi
 
@@ -690,16 +703,18 @@ cmd_complete_sprint() {
 }
 
 cmd_help() {
-  cat <<'HELP'
-kb — CLI wrapper for kanban automation
+  local system_name
+  system_name="$(cfg '.system.name' 'kanbania')"
+  cat <<HELP
+kb — CLI wrapper for ${system_name} kanban automation
 
 Usage: kb [flags] <command> [args...]
 
 Commands:
   claim TASK-XXXX             Move task from backlog to in-progress
-  review TASK-XXXX            Move task from in-progress to review (triggers codex)
+  review TASK-XXXX            Move task from in-progress to review (triggers agent)
   approve TASK-XXXX           Add approved annotation to task in review
-  resubmit TASK-XXXX          Re-trigger codex review after fix
+  resubmit TASK-XXXX          Re-trigger agent review after fix
   complete-sprint SPRINT-ID   Complete sprint, archive tasks, check OKR
   status                      Show board summary
   batch-review T1 T2 ...      Review multiple tasks (requires --confirm)
