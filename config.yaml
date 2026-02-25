@@ -1,0 +1,106 @@
+# =============================================================================
+# config.yaml — Configuração Global do Sistema Kanban
+# =============================================================================
+
+# Proprietário do sistema
+owner:
+  name: "kadufarah"
+  timezone: "America/Sao_Paulo"
+
+# Agentes autorizados
+agents:
+  - id: "claude-code"
+    name: "Claude Code"
+    provider: "Anthropic"
+  - id: "codex"
+    name: "Codex"
+    provider: "OpenAI"
+
+# Configuração de Sprints
+sprint:
+  duration_days: 14              # Duração padrão do sprint em dias
+  default_capacity: 21           # Story points padrão por sprint
+  naming_pattern: "sprint-NNN"   # Padrão de nomenclatura
+
+# Configuração do Board
+board:
+  columns:
+    - id: "backlog"
+      name: "Backlog"
+      description: "Tarefas identificadas, aguardando priorização"
+    - id: "todo"
+      name: "To Do"
+      description: "Priorizadas para o sprint atual"
+    - id: "in-progress"
+      name: "In Progress"
+      description: "Em execução por um agente"
+    - id: "review"
+      name: "Review"
+      description: "Aguardando QA do codex (gate para done ou reprovacao)"
+    - id: "done"
+      name: "Done"
+      description: "Concluídas e aprovadas"
+
+# Prioridades disponíveis (ordem de precedência)
+priorities:
+  - id: "critical"
+    name: "Critical"
+    order: 1
+  - id: "high"
+    name: "High"
+    order: 2
+  - id: "medium"
+    name: "Medium"
+    order: 3
+  - id: "low"
+    name: "Low"
+    order: 4
+
+# Story Points (escala Fibonacci)
+story_points:
+  allowed: [1, 2, 3, 5, 8, 13]
+  max_single_task: 3             # >= 3 SP: avaliar quebra se tocar > 3 arquivos
+  epic_threshold: 5              # >= 5 SP: obrigatoriamente decomposta em sub-tasks
+  max_files_per_task: 5          # Task que altera > 5 arquivos: deve ser quebrada
+
+# Labels padrão disponíveis
+labels:
+  - bug
+  - feature
+  - refactor
+  - docs
+  - infra
+  - security
+  - performance
+  - ux
+  - research
+  - ai-integration
+  - testing
+  - devops
+
+# OKR
+okr:
+  max_objectives_per_quarter: 3
+  kr_per_objective:
+    min: 2
+    max: 4
+
+# Caminhos do sistema (relativos à raiz do kanban)
+paths:
+  board: "board"
+  okrs: "okrs"
+  sprints: "sprints"
+  projects: "projects"
+  templates: "templates"
+  logs: "logs"
+
+# Subprojetos
+# Projetos com subprojetos têm board/sprints/okrs próprios por subprojeto.
+# Adicionar entrada aqui quando um projeto for migrado para estrutura com subprojetos.
+# Estrutura: projects/<proj>/subprojects/<sub>/{board,sprints,okrs}/
+subprojects:
+  enabled: true
+  # Projetos que usam subprojetos (listar slugs):
+  projects_with_subprojects:
+    - kanbania
+    - tecpag

@@ -1,0 +1,36 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Temporary
+*.tmp
+*.bak
+
+# Configuracao local (paths e secrets da maquina — nao commitar)
+config.local.yaml
+.env
+dashboard/.env.local
+
+# Logs que crescem automaticamente
+logs/kb-*.log
+logs/codex-review-trigger.log
+logs/board-monitor.log
+
+# Agentes
+agents/*.heartbeat
+
+# Node
+node_modules/
+dashboard/.next/
+dashboard/node_modules/
+
+# Next.js standalone build artifacts
+dashboard/.next/standalone/
+dashboard/.next/cache/

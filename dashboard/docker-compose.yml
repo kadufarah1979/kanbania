@@ -1,0 +1,12 @@
+services:
+  dashboard:
+    build: .
+    restart: always
+    ports:
+      - "8765:3000"
+      - "8766:8766"
+    volumes:
+      - ../:/kanban:ro
+    environment:
+      - KANBAN_ROOT=/kanban
+      - WS_PORT=8766

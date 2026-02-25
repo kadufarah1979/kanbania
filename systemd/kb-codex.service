@@ -1,0 +1,18 @@
+[Unit]
+Description=Kanbania loop - codex agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/carlosfarah/kanbania/scripts/kb-loop.sh codex
+WorkingDirectory=/home/carlosfarah/kanbania
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/home/carlosfarah/kanbania/logs/kb-codex.log
+StandardError=append:/home/carlosfarah/kanbania/logs/kb-codex.log
+Environment=HOME=/home/carlosfarah
+Environment=PATH=/home/carlosfarah/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target

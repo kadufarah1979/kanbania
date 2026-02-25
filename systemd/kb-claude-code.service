@@ -1,0 +1,18 @@
+[Unit]
+Description=Kanbania loop - claude-code agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/carlosfarah/kanbania/scripts/kb-loop.sh claude-code
+WorkingDirectory=/home/carlosfarah/kanbania
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/home/carlosfarah/kanbania/logs/kb-claude-code.log
+StandardError=append:/home/carlosfarah/kanbania/logs/kb-claude-code.log
+Environment=HOME=/home/carlosfarah
+Environment=PATH=/home/carlosfarah/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target
