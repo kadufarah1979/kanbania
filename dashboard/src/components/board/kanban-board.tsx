@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import type { Task, BoardData, BoardColumn as BoardColumnType, WSMessage } from "@/lib/types";
-import { BOARD_COLUMNS, COLUMN_BG, COLUMN_HEADER_COLOR } from "@/lib/constants";
+import { BOARD_COLUMNS, COLUMN_HEADER_COLOR } from "@/lib/constants";
 import { KanbanColumn } from "./kanban-column";
 import { TaskDialog } from "./task-dialog";
 import { BoardFilters } from "./board-filters";
@@ -67,7 +67,7 @@ export function KanbanBoard({ onWsStatus }: KanbanBoardProps) {
       });
     }
     return result;
-  }, [data, filters]);
+  }, [data, filters, displayColumns]);
 
   if (loading) {
     return (
