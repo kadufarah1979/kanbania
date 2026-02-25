@@ -58,9 +58,9 @@ function listMdFiles(dir: string): string[] {
 
 /**
  * Return all board/ directories that exist under KANBAN_ROOT:
- *   1. <root>/board
- *   2. <root>/projects/*/board
- *   3. <root>/projects/*/subprojects/*/board
+ *   1. root/board
+ *   2. root/projects/{proj}/board
+ *   3. root/projects/{proj}/subprojects/{sub}/board
  */
 function getBoardDirs(): string[] {
   const dirs: string[] = [];
