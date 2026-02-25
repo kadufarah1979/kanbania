@@ -56,15 +56,125 @@ function listMdFiles(dir: string): string[] {
   }
 }
 
+/**
+ * Return all board/ directories that exist under KANBAN_ROOT:
+ *   1. <root>/board
+ *   2. <root>/projects/*/board
+ *   3. <root>/projects/*/subprojects/*/board
+ */
+function getBoardDirs(): string[] {
+  const dirs: string[] = [];
+
+  // Global board (always first)
+  const globalBoard = resolve("board");
+  if (fs.existsSync(globalBoard)) dirs.push(globalBoard);
+
+  // Project-level boards
+  const projectsDir = resolve(PATHS.projects);
+  try {
+    const projects = fs.readdirSync(projectsDir).filter((d) => {
+      try { return fs.statSync(path.join(projectsDir, d)).isDirectory(); } catch { return false; }
+    });
+    for (const proj of projects) {
+      const projBoard = path.join(projectsDir, proj, "board");
+      if (fs.existsSync(projBoard)) dirs.push(projBoard);
+
+      // Subproject-level boards
+      const subprojectsDir = path.join(projectsDir, proj, "subprojects");
+      if (fs.existsSync(subprojectsDir)) {
+        try {
+          const subs = fs.readdirSync(subprojectsDir).filter((d) => {
+            try { return fs.statSync(path.join(subprojectsDir, d)).isDirectory(); } catch { return false; }
+          });
+          for (const sub of subs) {
+            const subBoard = path.join(subprojectsDir, sub, "board");
+            if (fs.existsSync(subBoard)) dirs.push(subBoard);
+          }
+        } catch { /* ignore */ }
+      }
+    }
+  } catch { /* no projects dir */ }
+
+  return dirs;
+}
+
+/**
+ * Return all sprints/ directories (global + projects + subprojects).
+ */
+function getSprintsDirs(): string[] {
+  const dirs: string[] = [resolve(PATHS.sprints)];
+
+  const projectsDir = resolve(PATHS.projects);
+  try {
+    const projects = fs.readdirSync(projectsDir).filter((d) => {
+      try { return fs.statSync(path.join(projectsDir, d)).isDirectory(); } catch { return false; }
+    });
+    for (const proj of projects) {
+      const projSprints = path.join(projectsDir, proj, "sprints");
+      if (fs.existsSync(projSprints)) dirs.push(projSprints);
+
+      const subprojectsDir = path.join(projectsDir, proj, "subprojects");
+      if (fs.existsSync(subprojectsDir)) {
+        try {
+          const subs = fs.readdirSync(subprojectsDir).filter((d) => {
+            try { return fs.statSync(path.join(subprojectsDir, d)).isDirectory(); } catch { return false; }
+          });
+          for (const sub of subs) {
+            const subSprints = path.join(subprojectsDir, sub, "sprints");
+            if (fs.existsSync(subSprints)) dirs.push(subSprints);
+          }
+        } catch { /* ignore */ }
+      }
+    }
+  } catch { /* no projects dir */ }
+
+  return dirs;
+}
+
+/**
+ * Return all okrs/ directories (global + projects + subprojects).
+ */
+function getOKRsDirs(): string[] {
+  const dirs: string[] = [resolve(PATHS.okrs)];
+
+  const projectsDir = resolve(PATHS.projects);
+  try {
+    const projects = fs.readdirSync(projectsDir).filter((d) => {
+      try { return fs.statSync(path.join(projectsDir, d)).isDirectory(); } catch { return false; }
+    });
+    for (const proj of projects) {
+      const projOKRs = path.join(projectsDir, proj, "okrs");
+      if (fs.existsSync(projOKRs)) dirs.push(projOKRs);
+
+      const subprojectsDir = path.join(projectsDir, proj, "subprojects");
+      if (fs.existsSync(subprojectsDir)) {
+        try {
+          const subs = fs.readdirSync(subprojectsDir).filter((d) => {
+            try { return fs.statSync(path.join(subprojectsDir, d)).isDirectory(); } catch { return false; }
+          });
+          for (const sub of subs) {
+            const subOKRs = path.join(subprojectsDir, sub, "okrs");
+            if (fs.existsSync(subOKRs)) dirs.push(subOKRs);
+          }
+        } catch { /* ignore */ }
+      }
+    }
+  } catch { /* no projects dir */ }
+
+  return dirs;
+}
+
 function readTask(filePath: string, status: BoardColumn): Task | null {
   const parsed = parseMarkdownFile(filePath);
   if (!parsed) return null;
   const fm = parsed.frontmatter as Record<string, unknown>;
+  const subprojectRaw = fm.subproject as string | null | undefined;
   return {
     id: (fm.id as string) || path.basename(filePath, ".md"),
     version: Number(fm.version || 1),
     title: (fm.title as string) || "Untitled",
     project: (fm.project as string) || "",
+    subproject: subprojectRaw && subprojectRaw !== "null" ? subprojectRaw : null,
     sprint: (fm.sprint as string) || null,
     okr: (fm.okr as string) || null,
     priority: (fm.priority as Priority) || "medium",
@@ -92,14 +202,19 @@ export function getAllTasks(): Task[] {
       "archived",
     ];
     const tasks: Task[] = [];
+    const seenIds = new Set<string>();
 
-    for (const col of columns) {
-      const relativePath = (PATHS as Record<string, string>)[col] ?? `board/${col}`;
-      const dir = resolve(relativePath);
-      const files = listMdFiles(dir);
-      for (const file of files) {
-        const task = readTask(file, col);
-        if (task) tasks.push(task);
+    for (const boardDir of getBoardDirs()) {
+      for (const col of columns) {
+        const dir = path.join(boardDir, col);
+        const files = listMdFiles(dir);
+        for (const file of files) {
+          const task = readTask(file, col);
+          if (task && !seenIds.has(task.id)) {
+            seenIds.add(task.id);
+            tasks.push(task);
+          }
+        }
       }
     }
 
@@ -225,15 +340,20 @@ export function getProject(slug: string): Project | null {
 
 export function getAllOKRs(): OKR[] {
   return cached("allOKRs", () => {
-    const okrsDir = resolve(PATHS.okrs);
-    const files = listMdFiles(okrsDir);
-    return files
-      .map((file) => {
+    const seenIds = new Set<string>();
+    const okrs: OKR[] = [];
+
+    for (const okrsDir of getOKRsDirs()) {
+      const files = listMdFiles(okrsDir);
+      for (const file of files) {
         const parsed = parseMarkdownFile(file);
-        if (!parsed) return null;
+        if (!parsed) continue;
         const fm = parsed.frontmatter as Record<string, unknown>;
-        return {
-          id: (fm.id as string) || path.basename(file, ".md"),
+        const id = (fm.id as string) || path.basename(file, ".md");
+        if (seenIds.has(id)) continue;
+        seenIds.add(id);
+        okrs.push({
+          id,
           period: (fm.period as string) || "",
           objective: (fm.objective as string) || "",
           created_at: (fm.created_at as string) || "",
@@ -241,30 +361,38 @@ export function getAllOKRs(): OKR[] {
           status: (fm.status as OKR["status"]) || "active",
           key_results: (fm.key_results as OKR["key_results"]) || [],
           acted_by: (fm.acted_by as OKR["acted_by"]) || [],
-        } satisfies OKR;
-      })
-      .filter((o): o is OKR => o !== null);
+        });
+      }
+    }
+
+    return okrs;
   });
 }
 
 export function getAllSprints(): Sprint[] {
   return cached("allSprints", () => {
-    const sprintsDir = resolve(PATHS.sprints);
-    const archiveSprintsDir = resolve("archive/sprints");
-    const activeFiles = listMdFiles(sprintsDir).filter(
-      (f) => !f.endsWith("current.md")
-    );
-    const archivedFiles = fs.existsSync(archiveSprintsDir)
-      ? listMdFiles(archiveSprintsDir)
-      : [];
-    const files = [...activeFiles, ...archivedFiles];
-    return files
-      .map((file) => {
+    const seenIds = new Set<string>();
+    const sprints: Sprint[] = [];
+
+    // Collect from all sprint dirs (active + archive per dir)
+    for (const sprintsDir of getSprintsDirs()) {
+      const activeFiles = listMdFiles(sprintsDir).filter(
+        (f) => !f.endsWith("current.md")
+      );
+      // Check for archive sibling: replace /sprints with /archive/sprints
+      const archiveDir = sprintsDir.replace(/\/sprints$/, "/archive/sprints");
+      const archivedFiles = fs.existsSync(archiveDir) ? listMdFiles(archiveDir) : [];
+      const files = [...activeFiles, ...archivedFiles];
+
+      for (const file of files) {
         const parsed = parseMarkdownFile(file);
-        if (!parsed) return null;
+        if (!parsed) continue;
         const fm = parsed.frontmatter as Record<string, unknown>;
-        return {
-          id: (fm.id as string) || path.basename(file, ".md"),
+        const id = (fm.id as string) || path.basename(file, ".md");
+        if (seenIds.has(id)) continue;
+        seenIds.add(id);
+        sprints.push({
+          id,
           title: (fm.title as string) || "",
           project: (fm.project as string) || "",
           goal: (fm.goal as string) || "",
@@ -275,9 +403,37 @@ export function getAllSprints(): Sprint[] {
           created_by: (fm.created_by as string) || "",
           okrs: (fm.okrs as string[]) || [],
           acted_by: (fm.acted_by as Sprint["acted_by"]) || [],
-        } satisfies Sprint;
-      })
-      .filter((s): s is Sprint => s !== null);
+        });
+      }
+    }
+
+    // Also include global archive/sprints
+    const globalArchive = resolve("archive/sprints");
+    if (fs.existsSync(globalArchive)) {
+      for (const file of listMdFiles(globalArchive)) {
+        const parsed = parseMarkdownFile(file);
+        if (!parsed) continue;
+        const fm = parsed.frontmatter as Record<string, unknown>;
+        const id = (fm.id as string) || path.basename(file, ".md");
+        if (seenIds.has(id)) continue;
+        seenIds.add(id);
+        sprints.push({
+          id,
+          title: (fm.title as string) || "",
+          project: (fm.project as string) || "",
+          goal: (fm.goal as string) || "",
+          start_date: (fm.start_date as string) || "",
+          end_date: (fm.end_date as string) || "",
+          status: (fm.status as Sprint["status"]) || "planning",
+          capacity: (fm.capacity as number) || 21,
+          created_by: (fm.created_by as string) || "",
+          okrs: (fm.okrs as string[]) || [],
+          acted_by: (fm.acted_by as Sprint["acted_by"]) || [],
+        });
+      }
+    }
+
+    return sprints;
   });
 }
 

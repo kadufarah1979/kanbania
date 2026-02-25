@@ -13,6 +13,10 @@
 #   can_transition <from-col> <to-col>   Exit 0 if transition is allowed, 1 otherwise
 #   get_project_path <slug>              Return local path of project (config.local.yaml)
 #   get_project_worktree <slug> [agent]  Return worktree path for agent in project
+#   resolve_board <task-file>            Return board/ dir for task (proj/sub-aware)
+#   resolve_sprint <task-file>           Return sprints/ dir for task (proj/sub-aware)
+#   resolve_okrs <task-file>             Return okrs/ dir for task (proj/sub-aware)
+#   get_board_dirs                       List all board dirs (global + projects + subprojects)
 #   notify <urgency> <title> <body>      Send notification via configured provider
 #
 # Auto-detected:
@@ -265,6 +269,137 @@ get_project_worktree() {
   if [[ -n "$path" && "$path" != "null" ]]; then
     printf '%s' "$path"
   fi
+}
+
+# =============================================================================
+# resolve_board <task-file>
+#
+# Return the board/ directory that owns the given task file.
+# Resolution order:
+#   1. projects/<proj>/subprojects/<sub>/board/  — if subproject field is set and dir exists
+#   2. projects/<proj>/board/                    — if dir exists
+#   3. ${KANBAN_ROOT}/board                      — global fallback (backward compat)
+#
+# Example:
+#   resolve_board "projects/my-app/subprojects/backend/board/todo/TASK-0001.md"
+#   → /path/to/kanbania/projects/my-app/subprojects/backend/board
+# =============================================================================
+resolve_board() {
+  local task_file="$1"
+  local proj sub
+  proj=$(grep '^project:' "$task_file" 2>/dev/null | sed 's/^project: *//' | tr -d '"' | tr -d "'" | tr -d ' ' | head -1 || true)
+  sub=$(grep '^subproject:' "$task_file" 2>/dev/null | sed 's/^subproject: *//' | tr -d '"' | tr -d "'" | tr -d ' ' | head -1 || true)
+
+  if [[ -n "$sub" && "$sub" != "null" && -n "$proj" && "$proj" != "null" ]]; then
+    local sub_board="${KANBAN_ROOT}/projects/${proj}/subprojects/${sub}/board"
+    if [[ -d "$sub_board" ]]; then
+      printf '%s' "$sub_board"
+      return 0
+    fi
+  fi
+
+  if [[ -n "$proj" && "$proj" != "null" ]]; then
+    local proj_board="${KANBAN_ROOT}/projects/${proj}/board"
+    if [[ -d "$proj_board" ]]; then
+      printf '%s' "$proj_board"
+      return 0
+    fi
+  fi
+
+  printf '%s' "${KANBAN_ROOT}/board"
+}
+
+# =============================================================================
+# resolve_sprint <task-file>
+#
+# Return the sprints/ directory for the given task file.
+# Same resolution order as resolve_board but for sprints/.
+# =============================================================================
+resolve_sprint() {
+  local task_file="$1"
+  local proj sub
+  proj=$(grep '^project:' "$task_file" 2>/dev/null | sed 's/^project: *//' | tr -d '"' | tr -d "'" | tr -d ' ' | head -1 || true)
+  sub=$(grep '^subproject:' "$task_file" 2>/dev/null | sed 's/^subproject: *//' | tr -d '"' | tr -d "'" | tr -d ' ' | head -1 || true)
+
+  if [[ -n "$sub" && "$sub" != "null" && -n "$proj" && "$proj" != "null" ]]; then
+    local sub_sprints="${KANBAN_ROOT}/projects/${proj}/subprojects/${sub}/sprints"
+    if [[ -d "$sub_sprints" ]]; then
+      printf '%s' "$sub_sprints"
+      return 0
+    fi
+  fi
+
+  if [[ -n "$proj" && "$proj" != "null" ]]; then
+    local proj_sprints="${KANBAN_ROOT}/projects/${proj}/sprints"
+    if [[ -d "$proj_sprints" ]]; then
+      printf '%s' "$proj_sprints"
+      return 0
+    fi
+  fi
+
+  printf '%s' "${KANBAN_ROOT}/sprints"
+}
+
+# =============================================================================
+# resolve_okrs <task-file>
+#
+# Return the okrs/ directory for the given task file.
+# Same resolution order as resolve_board but for okrs/.
+# =============================================================================
+resolve_okrs() {
+  local task_file="$1"
+  local proj sub
+  proj=$(grep '^project:' "$task_file" 2>/dev/null | sed 's/^project: *//' | tr -d '"' | tr -d "'" | tr -d ' ' | head -1 || true)
+  sub=$(grep '^subproject:' "$task_file" 2>/dev/null | sed 's/^subproject: *//' | tr -d '"' | tr -d "'" | tr -d ' ' | head -1 || true)
+
+  if [[ -n "$sub" && "$sub" != "null" && -n "$proj" && "$proj" != "null" ]]; then
+    local sub_okrs="${KANBAN_ROOT}/projects/${proj}/subprojects/${sub}/okrs"
+    if [[ -d "$sub_okrs" ]]; then
+      printf '%s' "$sub_okrs"
+      return 0
+    fi
+  fi
+
+  if [[ -n "$proj" && "$proj" != "null" ]]; then
+    local proj_okrs="${KANBAN_ROOT}/projects/${proj}/okrs"
+    if [[ -d "$proj_okrs" ]]; then
+      printf '%s' "$proj_okrs"
+      return 0
+    fi
+  fi
+
+  printf '%s' "${KANBAN_ROOT}/okrs"
+}
+
+# =============================================================================
+# get_board_dirs
+#
+# Print ALL board directories, one per line:
+#   1. Global ${KANBAN_ROOT}/board
+#   2. projects/*/board
+#   3. projects/*/subprojects/*/board
+# Only prints directories that actually exist.
+#
+# Example:
+#   while IFS= read -r board_dir; do
+#     echo "Board: $board_dir"
+#   done < <(get_board_dirs)
+# =============================================================================
+get_board_dirs() {
+  # Global board (always first)
+  echo "${KANBAN_ROOT}/board"
+
+  # Project-level boards
+  local proj_board
+  for proj_board in "${KANBAN_ROOT}"/projects/*/board; do
+    [[ -d "$proj_board" ]] && echo "$proj_board"
+  done
+
+  # Subproject-level boards
+  local sub_board
+  for sub_board in "${KANBAN_ROOT}"/projects/*/subprojects/*/board; do
+    [[ -d "$sub_board" ]] && echo "$sub_board"
+  done
 }
 
 # =============================================================================

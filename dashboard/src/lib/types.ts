@@ -37,6 +37,7 @@ export interface Task {
   version: number;
   title: string;
   project: string;
+  subproject: string | null;
   sprint: string | null;
   okr: string | null;
   priority: Priority;

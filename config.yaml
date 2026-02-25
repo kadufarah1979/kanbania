@@ -120,6 +120,8 @@ board:
 # =============================================================================
 projects:
   # Example project entry. Copy and adapt for each project.
+  # Run: ./setup.sh --add-project <slug>  to create the board directory.
+  #
   # my-project:
   #   name: "My Project"
   #   gates:
@@ -133,6 +135,23 @@ projects:
   #       commands:
   #         - name: "build"
   #           run: "npm run build"
+  #
+  # Example project with subprojects.
+  # Run: ./setup.sh --add-subproject my-app backend
+  #
+  # my-app:
+  #   name: "My App"
+  #   subprojects:
+  #     - id: backend
+  #       name: "Backend API"
+  #     - id: frontend
+  #       name: "Frontend"
+  #   gates:
+  #     api:
+  #       detect: ["backend/", "api/"]
+  #       commands:
+  #         - name: "tests"
+  #           run: "make test"
 
 # =============================================================================
 # Git integration

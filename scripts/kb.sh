@@ -12,7 +12,7 @@ set -euo pipefail
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPTS_DIR/lib/config.sh"
 
-BOARD_DIR="$KANBAN_ROOT/board"
+BOARD_DIR="$KANBAN_ROOT/board"   # Global board (default/fallback)
 LOGS_DIR="$KANBAN_ROOT/logs"
 LOCK_DIR="/tmp/kb-locks"
 GLOBAL_LOCK_FILE="$LOCK_DIR/board-global.lock"
@@ -49,15 +49,30 @@ run() {
 
 # ── Guards ───────────────────────────────────────────────────────────────────
 
+# find_task_file <task-id>
+# Searches all board dirs (global + projects + subprojects) for the task file.
+# Prints the full path and returns 0 if found, returns 1 if not found.
+find_task_file() {
+  local task_id="$1"
+  local board_dir col
+  while IFS= read -r board_dir; do
+    for col in "${_ALL_COLUMNS[@]}"; do
+      if [ -f "$board_dir/$col/$task_id.md" ]; then
+        echo "$board_dir/$col/$task_id.md"
+        return 0
+      fi
+    done
+  done < <(get_board_dirs)
+  return 1
+}
+
 find_task_column() {
   local task_id="$1"
-  local col
-  for col in "${_ALL_COLUMNS[@]}"; do
-    if [ -f "$BOARD_DIR/$col/$task_id.md" ]; then
-      echo "$col"
-      return 0
-    fi
-  done
+  local task_file
+  if task_file=$(find_task_file "$task_id"); then
+    basename "$(dirname "$task_file")"
+    return 0
+  fi
   return 1
 }
 
@@ -65,12 +80,13 @@ require_task_in() {
   local task_id="$1"
   local expected_col="$2"
 
-  if [ -f "$BOARD_DIR/$expected_col/$task_id.md" ]; then
-    return 0
-  fi
-
-  local actual_col
-  if actual_col=$(find_task_column "$task_id"); then
+  local task_file
+  if task_file=$(find_task_file "$task_id"); then
+    local actual_col
+    actual_col=$(basename "$(dirname "$task_file")")
+    if [ "$actual_col" = "$expected_col" ]; then
+      return 0
+    fi
     append_conflict "$task_id" "state-mismatch: expected=$expected_col actual=$actual_col"
     die "$task_id is in '$actual_col', expected '$expected_col'"
   else
@@ -220,13 +236,8 @@ append_activity() {
     log_info "[dry-run] append_activity $task_id $action"
     return 0
   fi
-  local title card_file col
-  for col in "${_ALL_COLUMNS[@]}"; do
-    if [ -f "$BOARD_DIR/$col/$task_id.md" ]; then
-      card_file="$BOARD_DIR/$col/$task_id.md"
-      break
-    fi
-  done
+  local title card_file
+  card_file=$(find_task_file "$task_id" 2>/dev/null || true)
   local project="unknown"
   if [ -n "${card_file:-}" ]; then
     title=$(grep '^title:' "$card_file" | sed 's/^title: *"//;s/"$//' | head -1)
@@ -260,13 +271,8 @@ append_conflict() {
     log_info "[dry-run] append_conflict $task_id $details"
     return 0
   fi
-  local project="unknown" card_file col
-  for col in "${_ALL_COLUMNS[@]}"; do
-    if [ -f "$BOARD_DIR/$col/$task_id.md" ]; then
-      card_file="$BOARD_DIR/$col/$task_id.md"
-      break
-    fi
-  done
+  local project="unknown" card_file
+  card_file=$(find_task_file "$task_id" 2>/dev/null || true)
   if [ -n "${card_file:-}" ]; then
     project=$(grep '^project:' "$card_file" | sed 's/^project: *//' | head -1)
   fi
@@ -318,12 +324,14 @@ kb_commit() {
 
 ensure_task_unique() {
   local task_id="$1"
-  local hits=0 col
-  for col in "${_ALL_COLUMNS[@]}"; do
-    if [ -f "$BOARD_DIR/$col/$task_id.md" ]; then
-      hits=$((hits + 1))
-    fi
-  done
+  local hits=0 board_dir col
+  while IFS= read -r board_dir; do
+    for col in "${_ALL_COLUMNS[@]}"; do
+      if [ -f "$board_dir/$col/$task_id.md" ]; then
+        hits=$((hits + 1))
+      fi
+    done
+  done < <(get_board_dirs)
   if [ "$hits" -ne 1 ]; then
     append_conflict "$task_id" "postcondition-failed: expected unique card copy, found=$hits"
     die "Postcondition failed for $task_id: expected exactly 1 copy, found $hits"
@@ -331,8 +339,8 @@ ensure_task_unique() {
 }
 
 assert_post_move() {
-  local task_id="$1" src_col="$2" dst_col="$3"
-  if [ -f "$BOARD_DIR/$src_col/$task_id.md" ] || [ ! -f "$BOARD_DIR/$dst_col/$task_id.md" ]; then
+  local task_id="$1" src_col="$2" dst_col="$3" board_dir="$4"
+  if [ -f "$board_dir/$src_col/$task_id.md" ] || [ ! -f "$board_dir/$dst_col/$task_id.md" ]; then
     append_conflict "$task_id" "postcondition-failed: move $src_col->$dst_col not materialized"
     die "Postcondition failed for $task_id: move $src_col -> $dst_col not materialized"
   fi
@@ -340,12 +348,12 @@ assert_post_move() {
 }
 
 move_task_file() {
-  local task_id="$1" src_col="$2" dst_col="$3"
-  local src="$BOARD_DIR/$src_col/$task_id.md"
-  local dst="$BOARD_DIR/$dst_col/$task_id.md"
+  local task_id="$1" src_col="$2" dst_col="$3" board_dir="$4"
+  local src="$board_dir/$src_col/$task_id.md"
+  local dst="$board_dir/$dst_col/$task_id.md"
   run mv "$src" "$dst"
   if ! $DRY_RUN; then
-    assert_post_move "$task_id" "$src_col" "$dst_col"
+    assert_post_move "$task_id" "$src_col" "$dst_col" "$board_dir"
   fi
 }
 
@@ -357,31 +365,33 @@ cmd_claim() {
   acquire_lock "$task_id"
   trap release_lock EXIT
 
+  # Find task across all boards
+  local task_file src_col board_dir
+  if ! task_file=$(find_task_file "$task_id"); then
+    die "$task_id not found in any board"
+  fi
+  src_col=$(basename "$(dirname "$task_file")")
+  board_dir=$(dirname "$(dirname "$task_file")")
+
   # Idempotency: already in in-progress with correct assignment
-  if [ -f "$BOARD_DIR/in-progress/$task_id.md" ]; then
-    if grep -q "^assigned_to: $KB_AGENT" "$BOARD_DIR/in-progress/$task_id.md"; then
+  if [ "$src_col" = "in-progress" ]; then
+    if grep -q "^assigned_to: $KB_AGENT" "$task_file"; then
       log_info "$task_id already in in-progress (assigned to $KB_AGENT)"
       exit 0
     fi
   fi
 
   # Accept tasks from both backlog and todo
-  local src_col=""
-  if [ -f "$BOARD_DIR/todo/$task_id.md" ]; then
-    src_col="todo"
-  elif [ -f "$BOARD_DIR/backlog/$task_id.md" ]; then
-    src_col="backlog"
-  else
-    die "$task_id not found in todo/ or backlog/"
+  if [ "$src_col" != "todo" ] && [ "$src_col" != "backlog" ]; then
+    die "$task_id is in '$src_col', not todo/ or backlog/"
   fi
   require_clean_git
 
-  local src="$BOARD_DIR/$src_col/$task_id.md"
-  local dst="$BOARD_DIR/in-progress/$task_id.md"
+  local dst="$board_dir/in-progress/$task_id.md"
   local expected_version
-  expected_version=$(fm_get_version "$src")
+  expected_version=$(fm_get_version "$task_file")
 
-  move_task_file "$task_id" "$src_col" "in-progress"
+  move_task_file "$task_id" "$src_col" "in-progress" "$board_dir"
 
   if ! $DRY_RUN; then
     require_version_unchanged "$dst" "$expected_version"
@@ -402,21 +412,31 @@ cmd_review() {
   acquire_lock "$task_id"
   trap release_lock EXIT
 
+  # Find task across all boards
+  local task_file src_col board_dir
+  if ! task_file=$(find_task_file "$task_id"); then
+    die "$task_id not found in any board"
+  fi
+  src_col=$(basename "$(dirname "$task_file")")
+  board_dir=$(dirname "$(dirname "$task_file")")
+
   # Idempotency: already in review
-  if [ -f "$BOARD_DIR/review/$task_id.md" ]; then
+  if [ "$src_col" = "review" ]; then
     log_info "$task_id already in review"
     exit 0
   fi
 
-  require_task_in "$task_id" "in-progress"
+  if [ "$src_col" != "in-progress" ]; then
+    append_conflict "$task_id" "state-mismatch: expected=in-progress actual=$src_col"
+    die "$task_id is in '$src_col', expected 'in-progress'"
+  fi
   require_clean_git
 
-  local src="$BOARD_DIR/in-progress/$task_id.md"
-  local dst="$BOARD_DIR/review/$task_id.md"
+  local dst="$board_dir/review/$task_id.md"
   local expected_version
-  expected_version=$(fm_get_version "$src")
+  expected_version=$(fm_get_version "$task_file")
 
-  move_task_file "$task_id" "in-progress" "review"
+  move_task_file "$task_id" "in-progress" "review" "$board_dir"
 
   if ! $DRY_RUN; then
     require_version_unchanged "$dst" "$expected_version"
@@ -450,25 +470,35 @@ cmd_approve() {
   acquire_lock "$task_id"
   trap release_lock EXIT
 
+  # Find task across all boards
+  local task_file src_col board_dir
+  if ! task_file=$(find_task_file "$task_id"); then
+    die "$task_id not found in any board"
+  fi
+  src_col=$(basename "$(dirname "$task_file")")
+  board_dir=$(dirname "$(dirname "$task_file")")
+
   # Idempotency: already approved by this agent
-  if [ -f "$BOARD_DIR/review/$task_id.md" ]; then
-    if grep -q "action: approved" "$BOARD_DIR/review/$task_id.md" && \
-       grep -B1 "action: approved" "$BOARD_DIR/review/$task_id.md" | grep -q "agent: $KB_AGENT"; then
+  if [ "$src_col" = "review" ]; then
+    if grep -q "action: approved" "$task_file" && \
+       grep -B1 "action: approved" "$task_file" | grep -q "agent: $KB_AGENT"; then
       log_info "$task_id already approved by $KB_AGENT"
       exit 0
     fi
   fi
 
-  require_task_in "$task_id" "review"
+  if [ "$src_col" != "review" ]; then
+    append_conflict "$task_id" "state-mismatch: expected=review actual=$src_col"
+    die "$task_id is in '$src_col', expected 'review'"
+  fi
 
-  local file="$BOARD_DIR/review/$task_id.md"
   local expected_version
-  expected_version=$(fm_get_version "$file")
+  expected_version=$(fm_get_version "$task_file")
 
   if ! $DRY_RUN; then
-    require_version_unchanged "$file" "$expected_version"
-    fm_append_acted "$file" "$KB_AGENT" "approved"
-    fm_bump_version "$file"
+    require_version_unchanged "$task_file" "$expected_version"
+    fm_append_acted "$task_file" "$KB_AGENT" "approved"
+    fm_bump_version "$task_file"
   fi
 
   append_activity "$task_id" "approved"
@@ -483,16 +513,25 @@ cmd_resubmit() {
   acquire_lock "$task_id"
   trap release_lock EXIT
 
-  require_task_in "$task_id" "review"
+  # Find task across all boards
+  local task_file src_col
+  if ! task_file=$(find_task_file "$task_id"); then
+    die "$task_id not found in any board"
+  fi
+  src_col=$(basename "$(dirname "$task_file")")
 
-  local file="$BOARD_DIR/review/$task_id.md"
+  if [ "$src_col" != "review" ]; then
+    append_conflict "$task_id" "state-mismatch: expected=review actual=$src_col"
+    die "$task_id is in '$src_col', expected 'review'"
+  fi
+
   local expected_version
-  expected_version=$(fm_get_version "$file")
+  expected_version=$(fm_get_version "$task_file")
 
   if ! $DRY_RUN; then
-    require_version_unchanged "$file" "$expected_version"
-    fm_append_acted "$file" "$KB_AGENT" "resubmitted"
-    fm_bump_version "$file"
+    require_version_unchanged "$task_file" "$expected_version"
+    fm_append_acted "$task_file" "$KB_AGENT" "resubmitted"
+    fm_bump_version "$task_file"
   fi
 
   append_activity "$task_id" "resubmitted" "re-triggered agent review after fix"
@@ -514,21 +553,38 @@ cmd_resubmit() {
 }
 
 cmd_status() {
-  echo "=== Kanban Board ==="
-  local col count
+  # Aggregate counts across all board dirs
+  local col board_dir
+  declare -A col_counts
   for col in "${_ALL_COLUMNS[@]}"; do
-    count=0
-    for f in "$BOARD_DIR/$col"/*.md; do [ -f "$f" ] && count=$((count + 1)) || true; done
-    printf "  %-14s %d\n" "${col}:" "$count"
+    col_counts["$col"]=0
+  done
+
+  while IFS= read -r board_dir; do
+    for col in "${_ALL_COLUMNS[@]}"; do
+      local count=0
+      for f in "$board_dir/$col"/*.md; do [ -f "$f" ] && count=$((count + 1)) || true; done
+      col_counts["$col"]=$(( col_counts["$col"] + count ))
+    done
+  done < <(get_board_dirs)
+
+  echo "=== Kanban Board ==="
+  for col in "${_ALL_COLUMNS[@]}"; do
+    printf "  %-14s %d\n" "${col}:" "${col_counts[$col]}"
   done
   echo ""
 
-  # In-progress details
+  # In-progress details (all boards)
   local inprogress_count=0
-  for f in "$BOARD_DIR/in-progress"/*.md; do [ -f "$f" ] && inprogress_count=$((inprogress_count + 1)) || true; done
+  local inprogress_files=()
+  while IFS= read -r board_dir; do
+    for f in "$board_dir/in-progress"/*.md; do
+      [ -f "$f" ] && inprogress_files+=("$f") && inprogress_count=$((inprogress_count + 1)) || true
+    done
+  done < <(get_board_dirs)
   if [ "$inprogress_count" -gt 0 ]; then
     echo "── In Progress ──"
-    for f in "$BOARD_DIR/in-progress"/*.md; do
+    for f in "${inprogress_files[@]}"; do
       [ -f "$f" ] || continue
       local tid tname tassigned
       tid=$(basename "$f" .md)
@@ -539,12 +595,17 @@ cmd_status() {
     echo ""
   fi
 
-  # Review details
+  # Review details (all boards)
   local review_count=0
-  for f in "$BOARD_DIR/review"/*.md; do [ -f "$f" ] && review_count=$((review_count + 1)) || true; done
+  local review_files=()
+  while IFS= read -r board_dir; do
+    for f in "$board_dir/review"/*.md; do
+      [ -f "$f" ] && review_files+=("$f") && review_count=$((review_count + 1)) || true
+    done
+  done < <(get_board_dirs)
   if [ "$review_count" -gt 0 ]; then
     echo "── In Review ──"
-    for f in "$BOARD_DIR/review"/*.md; do
+    for f in "${review_files[@]}"; do
       [ -f "$f" ] || continue
       local tid tname tapproved
       tid=$(basename "$f" .md)
@@ -558,12 +619,17 @@ cmd_status() {
     echo ""
   fi
 
-  # Backlog details
+  # Backlog details (all boards)
   local backlog_count=0
-  for f in "$BOARD_DIR/backlog"/*.md; do [ -f "$f" ] && backlog_count=$((backlog_count + 1)) || true; done
+  local backlog_files=()
+  while IFS= read -r board_dir; do
+    for f in "$board_dir/backlog"/*.md; do
+      [ -f "$f" ] && backlog_files+=("$f") && backlog_count=$((backlog_count + 1)) || true
+    done
+  done < <(get_board_dirs)
   if [ "$backlog_count" -gt 0 ]; then
     echo "── Backlog ──"
-    for f in "$BOARD_DIR/backlog"/*.md; do
+    for f in "${backlog_files[@]}"; do
       [ -f "$f" ] || continue
       local tid tname
       tid=$(basename "$f" .md)
@@ -631,18 +697,21 @@ cmd_complete_sprint() {
   sed -i "s/^status: .*/status: completed/" "$sprint_file"
   log_info "Sprint $sprint_id marked as completed"
 
-  # 2. Archive done tasks for this sprint
+  # 2. Archive done tasks for this sprint (search all board dirs)
   local archived_count=0
-  for task_file in "$BOARD_DIR"/done/TASK-*.md; do
-    [ -f "$task_file" ] || continue
-    local task_sprint
-    task_sprint=$(grep -m1 "^sprint:" "$task_file" | awk '{print $2}' | tr -d '"')
-    if [ "$task_sprint" = "$sprint_id" ]; then
-      mkdir -p "$KANBAN_ROOT/archive/board/done"
-      mv "$task_file" "$KANBAN_ROOT/archive/board/done/"
-      archived_count=$((archived_count + 1))
-    fi
-  done
+  local board_dir
+  while IFS= read -r board_dir; do
+    for task_file in "$board_dir"/done/TASK-*.md; do
+      [ -f "$task_file" ] || continue
+      local task_sprint
+      task_sprint=$(grep -m1 "^sprint:" "$task_file" | awk '{print $2}' | tr -d '"')
+      if [ "$task_sprint" = "$sprint_id" ]; then
+        mkdir -p "$KANBAN_ROOT/archive/board/done"
+        mv "$task_file" "$KANBAN_ROOT/archive/board/done/"
+        archived_count=$((archived_count + 1))
+      fi
+    done
+  done < <(get_board_dirs)
   log_info "Archived $archived_count done tasks"
 
   # 3. Archive the sprint file
