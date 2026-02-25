@@ -1,47 +1,166 @@
 # =============================================================================
-# config.yaml — Configuração Global do Sistema Kanban
+# config.yaml — Global Kanban System Configuration
+# =============================================================================
+# This file is committed to the repository and shared with the team.
+# Machine-specific paths and secrets go in config.local.yaml (gitignored).
+# Run ./setup.sh to generate both files interactively.
 # =============================================================================
 
-# Proprietário do sistema
-owner:
-  name: "kadufarah"
-  timezone: "America/Sao_Paulo"
+# System identity
+system:
+  name: "My Kanban"             # Display name for the dashboard
+  language: "en"                 # Template language: en | pt-BR | es
 
-# Agentes autorizados
+# Owner / primary user
+owner:
+  name: "yourname"
+  timezone: "UTC"                # IANA timezone, e.g. "America/Sao_Paulo"
+
+# =============================================================================
+# Agents
+# Each agent has a role that defines what board transitions they can perform.
+# Roles: implementer | reviewer | both | pm
+#
+# exec_command: null = manually triggered (IDE/terminal)
+#               string = auto-triggered by trigger-agent-*.sh scripts
+#               Use {{working_dir}} and {{kanban_root}} as placeholders.
+# =============================================================================
 agents:
   - id: "claude-code"
     name: "Claude Code"
-    provider: "Anthropic"
+    provider: "anthropic"         # anthropic | openai | google | human
+    role: "implementer"           # implementer | reviewer | both | pm
+    color: "#a855f7"              # Hex color shown in dashboard
+    exec_command: null            # null = manual trigger
+    wip_limit: 2                  # Max cards in-progress simultaneously
+
   - id: "codex"
     name: "Codex"
-    provider: "OpenAI"
+    provider: "openai"
+    role: "reviewer"
+    color: "#22c55e"
+    exec_command: "codex exec --full-auto -C {{working_dir}} --add-dir {{kanban_root}}"
+    wip_limit: 1
 
-# Configuração de Sprints
-sprint:
-  duration_days: 14              # Duração padrão do sprint em dias
-  default_capacity: 21           # Story points padrão por sprint
-  naming_pattern: "sprint-NNN"   # Padrão de nomenclatura
+# =============================================================================
+# Workflow
+# Defines allowed board transitions and automatic triggers.
+# If this section is absent, all transitions between any columns are allowed.
+# =============================================================================
+workflow:
+  transitions:
+    - from: "backlog"
+      to: "todo"
+      allowed_roles: ["implementer", "pm", "both"]
+      action: "prioritize"
 
-# Configuração do Board
+    - from: "todo"
+      to: "in-progress"
+      allowed_roles: ["implementer", "both"]
+      action: "claim"
+
+    - from: "in-progress"
+      to: "review"
+      allowed_roles: ["implementer", "both"]
+      action: "submit_review"
+      assign_to_role: "reviewer"
+
+    - from: "review"
+      to: "done"
+      allowed_roles: ["reviewer", "both"]
+      action: "approve"
+
+    - from: "review"
+      to: "in-progress"
+      allowed_roles: ["reviewer", "both"]
+      action: "reject"
+      assign_to_role: "implementer"
+
+  # Triggers: actions automatically fired on specific transitions
+  triggers:
+    - on: "transition"
+      to: "review"
+      action: "exec_agent"
+      target_role: "reviewer"
+      prompt_template: "review"
+
+    - on: "transition"
+      from: "review"
+      to: "in-progress"
+      action: "exec_agent"
+      target_role: "implementer"
+      prompt_template: "fix"
+
+# =============================================================================
+# Board columns
+# The id field must match the directory name under board/.
+# =============================================================================
 board:
   columns:
     - id: "backlog"
       name: "Backlog"
-      description: "Tarefas identificadas, aguardando priorização"
+      description: "Identified tasks, awaiting prioritization"
     - id: "todo"
       name: "To Do"
-      description: "Priorizadas para o sprint atual"
+      description: "Prioritized for the current sprint"
     - id: "in-progress"
       name: "In Progress"
-      description: "Em execução por um agente"
+      description: "Being worked on by an agent"
     - id: "review"
       name: "Review"
-      description: "Aguardando QA do codex (gate para done ou reprovacao)"
+      description: "Awaiting QA — gate to done or rejection"
     - id: "done"
       name: "Done"
-      description: "Concluídas e aprovadas"
+      description: "Completed and approved"
 
-# Prioridades disponíveis (ordem de precedência)
+# =============================================================================
+# Projects
+# Local paths go in config.local.yaml to avoid committing machine-specific data.
+# Gates define test/build commands run before a task can move to review.
+# =============================================================================
+projects:
+  # Example project entry. Copy and adapt for each project.
+  # my-project:
+  #   name: "My Project"
+  #   gates:
+  #     backend:
+  #       detect: ["backend/", "server/", "api/"]
+  #       commands:
+  #         - name: "tests"
+  #           run: "make test"
+  #     frontend:
+  #       detect: ["frontend/", "src/", "app/"]
+  #       commands:
+  #         - name: "build"
+  #           run: "npm run build"
+
+# =============================================================================
+# Git integration
+# =============================================================================
+git:
+  commit_prefix: "[KANBAN]"      # Prefix for all kanban board commits
+  auto_push: true                 # Push to remote after every board state change
+
+# =============================================================================
+# Notifications
+# Provider: none (default) | notify-send | slack | webhook | telegram
+# Credentials go in config.local.yaml > notifications.settings
+# =============================================================================
+notifications:
+  provider: "none"
+  settings: {}                   # Override in config.local.yaml
+
+# =============================================================================
+# Sprint settings
+# =============================================================================
+sprint:
+  duration_days: 14
+  default_capacity: 21
+  naming_pattern: "sprint-NNN"
+
+# =============================================================================
+# Task schema
+# =============================================================================
 priorities:
   - id: "critical"
     name: "Critical"
@@ -56,14 +175,12 @@ priorities:
     name: "Low"
     order: 4
 
-# Story Points (escala Fibonacci)
 story_points:
   allowed: [1, 2, 3, 5, 8, 13]
-  max_single_task: 3             # >= 3 SP: avaliar quebra se tocar > 3 arquivos
-  epic_threshold: 5              # >= 5 SP: obrigatoriamente decomposta em sub-tasks
-  max_files_per_task: 5          # Task que altera > 5 arquivos: deve ser quebrada
+  max_single_task: 3
+  epic_threshold: 5
+  max_files_per_task: 5
 
-# Labels padrão disponíveis
 labels:
   - bug
   - feature
@@ -78,14 +195,18 @@ labels:
   - testing
   - devops
 
-# OKR
+# =============================================================================
+# OKR settings
+# =============================================================================
 okr:
-  max_objectives_per_quarter: 3
+  max_objectives_per_quarter: 5
   kr_per_objective:
     min: 2
-    max: 4
+    max: 5
 
-# Caminhos do sistema (relativos à raiz do kanban)
+# =============================================================================
+# Filesystem paths (relative to KANBAN_ROOT)
+# =============================================================================
 paths:
   board: "board"
   okrs: "okrs"
@@ -94,13 +215,11 @@ paths:
   templates: "templates"
   logs: "logs"
 
-# Subprojetos
-# Projetos com subprojetos têm board/sprints/okrs próprios por subprojeto.
-# Adicionar entrada aqui quando um projeto for migrado para estrutura com subprojetos.
-# Estrutura: projects/<proj>/subprojects/<sub>/{board,sprints,okrs}/
+# =============================================================================
+# Subprojects
+# Projects that have their own board/sprints/okrs per subproject.
+# Structure: projects/<proj>/subprojects/<sub>/{board,sprints,okrs}/
+# =============================================================================
 subprojects:
   enabled: true
-  # Projetos que usam subprojetos (listar slugs):
-  projects_with_subprojects:
-    - kanbania
-    - tecpag
+  projects_with_subprojects: []
