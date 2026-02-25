@@ -8,6 +8,8 @@
 
 Kanbania is a project management system designed to work alongside AI agents (Claude Code, Codex, Gemini, or any CLI-invokable AI). Board state lives in plain Markdown files committed to Git. Configuration is a single `config.yaml` — no database, no SaaS, no vendor lock-in.
 
+![Kanbania Dashboard](docs/screenshots/01-home-dark.png)
+
 ## Features
 
 - **File-based board** — every task is a Markdown file with YAML frontmatter
