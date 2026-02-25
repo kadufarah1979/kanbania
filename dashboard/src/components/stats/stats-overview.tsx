@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { Stats } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PRIORITY_COLORS, COLUMN_HEADER_COLOR, AGENT_COLORS } from "@/lib/constants";
+import { PRIORITY_COLORS, COLUMN_HEADER_COLOR, agentColorStyle } from "@/lib/constants";
+import { useConfig } from "@/lib/hooks/use-config";
 import { cn } from "@/lib/utils";
 import { BarChart3, CheckCircle, Clock, Layers, ChevronDown, ChevronRight } from "lucide-react";
 
@@ -22,6 +23,10 @@ interface StatsOverviewProps {
 
 export function StatsOverview({ stats }: StatsOverviewProps) {
   const [open, setOpen] = useState(false);
+  const { config } = useConfig();
+  const agentHexColors = Object.fromEntries(
+    (config?.agents ?? []).map((a) => [a.id, a.color])
+  );
 
   return (
     <div className="space-y-4">
@@ -111,7 +116,7 @@ export function StatsOverview({ stats }: StatsOverviewProps) {
             ) : (
               Object.entries(stats.byAgent).map(([agent, count]) => (
                 <div key={agent} className="flex items-center justify-between text-sm">
-                  <span className={cn("px-1.5 py-0.5 rounded text-xs font-medium border", AGENT_COLORS[agent] || "")}>{agent}</span>
+                  <span className="px-1.5 py-0.5 rounded text-xs font-medium border" style={agentColorStyle(agentHexColors[agent])}>{agent}</span>
                   <span className="text-muted-foreground">{count}</span>
                 </div>
               ))

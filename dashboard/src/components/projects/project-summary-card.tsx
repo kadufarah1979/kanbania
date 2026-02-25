@@ -137,29 +137,27 @@ export function ProjectSummaryCard({
               </div>
 
               <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                {(["archived", "done", "review", "in-progress", "todo", "backlog"] as BoardColumn[]).map(
-                  (col) =>
-                    taskCounts[col] > 0 && (
-                      <div
-                        key={col}
-                        className={cn("h-full", STATUS_COLORS[col]?.bg.replace("/15", "") || "bg-gray-500")}
-                        style={{ width: `${(taskCounts[col] / total) * 100}%` }}
-                      />
-                    )
+                {Object.entries(taskCounts).map(([col, count]) =>
+                  count > 0 ? (
+                    <div
+                      key={col}
+                      className={cn("h-full", STATUS_COLORS[col]?.bg.replace("/15", "") || "bg-gray-500")}
+                      style={{ width: `${(count / total) * 100}%` }}
+                    />
+                  ) : null
                 )}
               </div>
 
               <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {(["in-progress", "review", "todo", "done", "archived"] as BoardColumn[]).map(
-                  (col) =>
-                    taskCounts[col] > 0 && (
-                      <span
-                        key={col}
-                        className={cn("text-xs font-medium", STATUS_COLORS[col]?.text || "text-gray-400")}
-                      >
-                        {taskCounts[col]} {STATUS_LABELS[col] || col}
-                      </span>
-                    )
+                {Object.entries(taskCounts).map(([col, count]) =>
+                  count > 0 ? (
+                    <span
+                      key={col}
+                      className={cn("text-xs font-medium", STATUS_COLORS[col]?.text || "text-gray-400")}
+                    >
+                      {count} {STATUS_LABELS[col] || col}
+                    </span>
+                  ) : null
                 )}
               </div>
 

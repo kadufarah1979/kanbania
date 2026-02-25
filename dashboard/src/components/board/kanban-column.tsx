@@ -6,7 +6,7 @@ import { COLUMN_BG, COLUMN_HEADER_COLOR } from "@/lib/constants";
 import { TaskCard } from "./task-card";
 import { cn } from "@/lib/utils";
 
-const COLUMN_ABBREV: Record<BoardColumn, string> = {
+const COLUMN_ABBREV_DEFAULTS: Record<string, string> = {
   backlog: "B",
   todo: "TD",
   "in-progress": "IP",
@@ -14,6 +14,10 @@ const COLUMN_ABBREV: Record<BoardColumn, string> = {
   done: "D",
   archived: "F",
 };
+
+function getColumnAbbrev(id: string): string {
+  return COLUMN_ABBREV_DEFAULTS[id] ?? id.slice(0, 2).toUpperCase();
+}
 
 interface KanbanColumnProps {
   columnId: BoardColumn;
@@ -42,7 +46,7 @@ export function KanbanColumn({ columnId, name, tasks, onTaskClick, collapsed = f
           title={name}
           onClick={!isCollapsed && collapsed ? () => setExpanded(false) : undefined}
         >
-          {isCollapsed ? COLUMN_ABBREV[columnId] : name}
+          {isCollapsed ? getColumnAbbrev(columnId) : name}
         </h3>
         <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded-full">
           {tasks.length}

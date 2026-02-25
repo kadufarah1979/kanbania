@@ -289,7 +289,7 @@ export function GET(req: Request) {
       taskId: t.id,
       storyPoints: t.story_points!,
       tokens: t.tokens_used!,
-      costUsd: tokenCostUsd(t.tokens_used!, t.assigned_to || t.created_by || "claude-code"),
+      costUsd: tokenCostUsd(t.tokens_used!, t.assigned_to || t.created_by || "unknown"),
       agent: t.assigned_to || t.created_by || "unknown",
       project: t.project,
     }));

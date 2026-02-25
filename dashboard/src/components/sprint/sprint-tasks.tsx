@@ -1,7 +1,8 @@
 "use client";
 
 import type { Task, BoardColumn } from "@/lib/types";
-import { PRIORITY_COLORS, AGENT_COLORS, COLUMN_HEADER_COLOR } from "@/lib/constants";
+import { PRIORITY_COLORS, COLUMN_HEADER_COLOR, agentColorStyle } from "@/lib/constants";
+import { useConfig } from "@/lib/hooks/use-config";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -9,9 +10,18 @@ interface SprintTasksProps {
   tasks: Task[];
 }
 
-const statusOrder: BoardColumn[] = ["in-progress", "todo", "review", "done", "backlog"];
+const DEFAULT_STATUS_ORDER: BoardColumn[] = ["in-progress", "todo", "review", "done", "backlog"];
 
 export function SprintTasks({ tasks }: SprintTasksProps) {
+  const { columnIds, config } = useConfig();
+  const statusOrder: BoardColumn[] = columnIds.length > 0
+    ? (["in-progress", ...columnIds.filter((c) => c !== "in-progress")] as BoardColumn[])
+    : DEFAULT_STATUS_ORDER;
+
+  const agentHexColors = Object.fromEntries(
+    (config?.agents ?? []).map((a) => [a.id, a.color])
+  );
+
   const grouped = statusOrder.reduce((acc, status) => {
     acc[status] = tasks.filter((t) => t.status === status);
     return acc;
@@ -42,7 +52,7 @@ export function SprintTasks({ tasks }: SprintTasksProps) {
                     <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{task.story_points}pt</span>
                   )}
                   {task.assigned_to && (
-                    <Badge variant="outline" className={cn("text-[10px]", AGENT_COLORS[task.assigned_to] || "")}>
+                    <Badge variant="outline" className="text-[10px]" style={agentColorStyle(agentHexColors[task.assigned_to])}>
                       {task.assigned_to}
                     </Badge>
                   )}
