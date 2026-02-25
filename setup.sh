@@ -153,6 +153,101 @@ create_board_structure() {
     fi
 }
 
+# create_project_board_structure <base-dir> [column-ids...]
+# Creates board/{col}/.gitkeep + sprints/ + okrs/ + archive/board/ under base-dir.
+# Uses global board columns if no column-ids passed.
+create_project_board_structure() {
+    local base_dir="$1"
+    shift
+    local columns=("$@")
+
+    if (( ${#columns[@]} == 0 )); then
+        read -ra columns <<< "$(default_column_ids)"
+    fi
+
+    local created=0
+    for col in "${columns[@]}"; do
+        local dir="${base_dir}/board/${col}"
+        if [[ ! -d "$dir" ]]; then
+            mkdir -p "$dir"
+            touch "${dir}/.gitkeep"
+            created=$(( created + 1 ))
+        fi
+    done
+
+    mkdir -p "${base_dir}/sprints"
+    mkdir -p "${base_dir}/okrs"
+    mkdir -p "${base_dir}/archive/board"
+
+    if (( created > 0 )); then
+        print_success "Created ${created} board column director$([ $created -eq 1 ] && echo 'y' || echo 'ies') under ${base_dir}"
+    fi
+}
+
+# ─── --add-project Mode ───────────────────────────────────────────────────────
+
+add_project_mode() {
+    local slug="${1:-}"
+    if [[ -z "$slug" ]]; then
+        print_error "--add-project requires a slug argument"
+        echo -e "  Usage: ${BOLD}./setup.sh --add-project <slug>${NC}"
+        exit 1
+    fi
+
+    local base_dir="${KANBAN_ROOT}/projects/${slug}"
+
+    if [[ -d "${base_dir}/board" ]]; then
+        print_warning "Project '${slug}' board already exists at ${base_dir}/board"
+        exit 0
+    fi
+
+    print_section "Add Project: ${slug}"
+    print_step "Creating board structure under projects/${slug}/"
+
+    create_project_board_structure "$base_dir"
+
+    print_success "Project '${slug}' initialized"
+    echo
+    echo -e "  ${DIM}Board:    projects/${slug}/board/{backlog,todo,in-progress,review,done}${NC}"
+    echo -e "  ${DIM}Sprints:  projects/${slug}/sprints/${NC}"
+    echo -e "  ${DIM}OKRs:     projects/${slug}/okrs/${NC}"
+    echo
+    echo -e "  ${BOLD}Next:${NC} set project: ${slug} in task frontmatter to use this board."
+}
+
+# ─── --add-subproject Mode ────────────────────────────────────────────────────
+
+add_subproject_mode() {
+    local proj="${1:-}"
+    local sub="${2:-}"
+
+    if [[ -z "$proj" || -z "$sub" ]]; then
+        print_error "--add-subproject requires two arguments: <project-slug> <subproject-slug>"
+        echo -e "  Usage: ${BOLD}./setup.sh --add-subproject <project> <subproject>${NC}"
+        exit 1
+    fi
+
+    local base_dir="${KANBAN_ROOT}/projects/${proj}/subprojects/${sub}"
+
+    if [[ -d "${base_dir}/board" ]]; then
+        print_warning "Subproject '${proj}/${sub}' board already exists at ${base_dir}/board"
+        exit 0
+    fi
+
+    print_section "Add Subproject: ${proj}/${sub}"
+    print_step "Creating board structure under projects/${proj}/subprojects/${sub}/"
+
+    create_project_board_structure "$base_dir"
+
+    print_success "Subproject '${proj}/${sub}' initialized"
+    echo
+    echo -e "  ${DIM}Board:    projects/${proj}/subprojects/${sub}/board/{...}${NC}"
+    echo -e "  ${DIM}Sprints:  projects/${proj}/subprojects/${sub}/sprints/${NC}"
+    echo -e "  ${DIM}OKRs:     projects/${proj}/subprojects/${sub}/okrs/${NC}"
+    echo
+    echo -e "  ${BOLD}Next:${NC} set project: ${proj} + subproject: ${sub} in task frontmatter."
+}
+
 # ─── Gitignore ────────────────────────────────────────────────────────────────
 
 update_gitignore() {
@@ -790,15 +885,17 @@ print_help() {
 ${BOLD}Kanbania Setup Wizard${NC}
 
 ${BOLD}USAGE${NC}
-    ./setup.sh [MODE]
+    ./setup.sh [MODE] [ARGS]
 
 ${BOLD}MODES${NC}
-    (none)          Interactive: asks whether to use quick or detailed mode
-    --quick         Non-interactive quick setup with sensible defaults
-    --detailed      Full interactive configuration of all options
-    --from-config   Recreate board directories from existing config.yaml
-    --upgrade       Merge new schema keys into existing config.yaml
-    --help          Show this help message
+    (none)                          Interactive: asks whether to use quick or detailed mode
+    --quick                         Non-interactive quick setup with sensible defaults
+    --detailed                      Full interactive configuration of all options
+    --from-config                   Recreate board directories from existing config.yaml
+    --upgrade                       Merge new schema keys into existing config.yaml
+    --add-project <slug>            Create isolated board for a project
+    --add-subproject <proj> <sub>   Create isolated board for a subproject
+    --help                          Show this help message
 
 ${BOLD}EXAMPLES${NC}
     # First-time setup (interactive)
@@ -812,6 +909,12 @@ ${BOLD}EXAMPLES${NC}
 
     # Recover board dirs after accidental deletion
     ./setup.sh --from-config
+
+    # Create project-level board
+    ./setup.sh --add-project my-app
+
+    # Create subproject-level board
+    ./setup.sh --add-subproject my-app backend
 
 HELP
 }
@@ -843,6 +946,14 @@ main() {
             print_header
             print_section "Upgrade Config Schema"
             upgrade_mode
+            ;;
+        --add-project)
+            print_header
+            add_project_mode "${2:-}"
+            ;;
+        --add-subproject)
+            print_header
+            add_subproject_mode "${2:-}" "${3:-}"
             ;;
         "")
             print_header
