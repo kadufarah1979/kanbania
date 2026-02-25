@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { parseMarkdownFile, parseYamlFile, parseJsonlFile, parseJsonlFileTail } from "./parser";
 import { KANBAN_ROOT, PATHS } from "../constants";
+import { getKanbanConfig } from "./config-reader";
 import type {
   Task,
   BoardData,
@@ -85,11 +86,16 @@ function readTask(filePath: string, status: BoardColumn): Task | null {
 
 export function getAllTasks(): Task[] {
   return cached("allTasks", () => {
-    const columns: BoardColumn[] = ["backlog", "todo", "in-progress", "review", "done", "archived"];
+    const config = getKanbanConfig();
+    const columns: BoardColumn[] = [
+      ...config.board.columns.map((c) => c.id),
+      "archived",
+    ];
     const tasks: Task[] = [];
 
     for (const col of columns) {
-      const dir = resolve(PATHS[col]);
+      const relativePath = (PATHS as Record<string, string>)[col] ?? `board/${col}`;
+      const dir = resolve(relativePath);
       const files = listMdFiles(dir);
       for (const file of files) {
         const task = readTask(file, col);
@@ -296,7 +302,11 @@ export function getAllActivity(): { items: Activity[] } {
 }
 
 export function getConfig(): KanbanConfig | null {
-  return parseYamlFile<KanbanConfig>(resolve(PATHS.config));
+  try {
+    return getKanbanConfig();
+  } catch {
+    return parseYamlFile<KanbanConfig>(resolve(PATHS.config));
+  }
 }
 
 export interface SprintStats {

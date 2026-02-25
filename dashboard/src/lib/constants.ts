@@ -1,14 +1,15 @@
 import type { BoardColumn, Priority } from "./types";
 
-export const KANBAN_ROOT = process.env.KANBAN_ROOT || "/home/carlosfarah/kanbania";
+export const KANBAN_ROOT = process.env.KANBAN_ROOT || "";
 
+/** Default board columns — overridden at runtime by config.yaml via useConfig() */
 export const BOARD_COLUMNS: { id: BoardColumn; name: string; color: string }[] = [
   { id: "backlog", name: "Backlog", color: "text-gray-500" },
-  { id: "todo", name: "A Fazer", color: "text-blue-500" },
-  { id: "in-progress", name: "Em Progresso", color: "text-yellow-500" },
-  { id: "review", name: "Revisao", color: "text-orange-500" },
-  { id: "done", name: "Concluido", color: "text-green-500" },
-  { id: "archived", name: "Finalizadas", color: "text-emerald-600" },
+  { id: "todo", name: "To Do", color: "text-blue-500" },
+  { id: "in-progress", name: "In Progress", color: "text-yellow-500" },
+  { id: "review", name: "Review", color: "text-orange-500" },
+  { id: "done", name: "Done", color: "text-green-500" },
+  { id: "archived", name: "Archived", color: "text-emerald-600" },
 ];
 
 export const COLUMN_BG: Record<BoardColumn, string> = {
@@ -36,18 +37,32 @@ export const PRIORITY_COLORS: Record<Priority, { border: string; bg: string; tex
   low: { border: "border-l-gray-400", bg: "bg-gray-400/10", text: "text-gray-400", dot: "bg-gray-400" },
 };
 
-export const AGENT_COLORS: Record<string, string> = {
-  "claude-code": "bg-purple-950/80 text-purple-400 border-purple-500/40",
-  codex: "bg-green-950/80 text-green-400 border-green-500/40",
-  kadufarah: "bg-blue-950/80 text-blue-400 border-blue-500/40",
-};
+/**
+ * Fallback agent badge colors (Tailwind classes) for agents not in config.
+ * Agents from config.yaml get colors derived from their `color` hex field.
+ */
+export const AGENT_COLORS: Record<string, string> = {};
 
-/** Hex colors for Recharts charts */
-export const AGENT_HEX_COLORS: Record<string, string> = {
-  "claude-code": "#a855f7",
-  codex: "#22c55e",
-  kadufarah: "#3b82f6",
-};
+/** Fallback hex colors for agents not in config (used by Recharts) */
+export const AGENT_HEX_COLORS: Record<string, string> = {};
+
+/** Default hex color for agents with no configured color */
+export const DEFAULT_AGENT_HEX_COLOR = "#6b7280";
+
+/**
+ * Builds inline style for an agent badge given a hex color from config.
+ * Use this when agent colors come from config rather than static AGENT_COLORS.
+ */
+export function agentColorStyle(hexColor: string): React.CSSProperties {
+  return {
+    backgroundColor: `${hexColor}20`,
+    color: hexColor,
+    borderColor: `${hexColor}40`,
+  };
+}
+
+// React import needed for CSSProperties type
+import type React from "react";
 
 /** Hex colors for status in charts */
 export const STATUS_HEX_COLORS: Record<string, string> = {

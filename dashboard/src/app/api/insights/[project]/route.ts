@@ -122,10 +122,10 @@ export function GET(req: Request, { params }: { params: { project: string } }) {
   });
 
   // Tasks by status
-  const tasksByStatus = {
+  const tasksByStatus: Record<string, number> = {
     backlog: 0, todo: 0, "in-progress": 0, review: 0, done: 0, archived: 0,
   };
-  for (const task of tasks) tasksByStatus[task.status]++;
+  for (const task of tasks) tasksByStatus[task.status] = (tasksByStatus[task.status] ?? 0) + 1;
 
   // Top tasks by tokens
   const topTasks = [...tasks]

@@ -8,8 +8,23 @@ export interface TokensByPhase {
 }
 
 export type Priority = "critical" | "high" | "medium" | "low";
-export type BoardColumn = "backlog" | "todo" | "in-progress" | "review" | "done" | "archived";
-export type AgentId = "claude-code" | "codex" | "kadufarah";
+
+/** Open string type — accepts any column id from config */
+export type BoardColumn = string;
+
+/** Open string type — accepts any agent id from config */
+export type AgentId = string;
+
+/** Agent configuration entry from config.yaml */
+export interface AgentConfig {
+  id: string;
+  name: string;
+  provider: string;
+  role: "implementer" | "reviewer" | "both" | "pm";
+  color: string;
+  exec_command: string | null;
+  wip_limit?: number;
+}
 
 export interface ActedByEntry {
   agent: string;
@@ -47,6 +62,7 @@ export interface BoardData {
   review: Task[];
   done: Task[];
   archived: Task[];
+  [column: string]: Task[];
 }
 
 export interface KeyResult {
@@ -106,12 +122,15 @@ export interface Activity {
 }
 
 export interface KanbanConfig {
+  system: { name: string; language: string };
   owner: { name: string; timezone: string };
-  agents: { id: string; name: string; provider: string }[];
+  agents: AgentConfig[];
   sprint: { duration_days: number; default_capacity: number; naming_pattern: string };
   board: { columns: { id: string; name: string; description: string }[] };
   priorities: { id: string; name: string; order: number }[];
   labels: string[];
+  git?: { commit_prefix: string; auto_push: boolean };
+  notifications?: { provider: string; settings: Record<string, string> };
 }
 
 export interface Stats {
