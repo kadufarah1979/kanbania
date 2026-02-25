@@ -181,6 +181,19 @@ get_reviewers() {
 }
 
 # =============================================================================
+# get_all_agent_ids
+#
+# Print all agent IDs, one per line.
+# =============================================================================
+get_all_agent_ids() {
+  local result
+  result="$(yq '.agents[].id' "$_CFG_YAML" 2>/dev/null || true)"
+  if [[ -n "$result" && "$result" != "null" ]]; then
+    printf '%s\n' "$result"
+  fi
+}
+
+# =============================================================================
 # can_transition <from-column> <to-column>
 #
 # Exit 0 if the transition is defined in config.yaml > workflow.transitions.

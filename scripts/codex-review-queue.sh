@@ -13,8 +13,9 @@
 
 set -euo pipefail
 
-KANBAN_DIR="/home/carlosfarah/kanbania"
-REVIEW_DIR="$KANBAN_DIR/board/review"
+source "$(dirname "$0")/lib/config.sh"
+KANBAN_DIR="${KANBAN_ROOT}"
+REVIEW_DIR="${KANBAN_ROOT}/board/review"
 
 SESSION_PROJECT="${1:-}"
 

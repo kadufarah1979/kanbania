@@ -12,8 +12,8 @@ TASK_ID="${1:?Usage: cicd-trigger-pipeline.sh <task_id>}"
 : "${GITLAB_PROJECT_ID:?GITLAB_PROJECT_ID not set}"
 GITLAB_API_URL="${GITLAB_API_URL:-http://git.lab.tectoylabs.com.br/api/v4}"
 
-KANBAN_DIR="/home/carlosfarah/kanbania"
-LOGS_DIR="$KANBAN_DIR/logs"
+source "$(dirname "$0")/lib/config.sh"
+LOGS_DIR="${KANBAN_ROOT}/logs"
 
 now() { date -Iseconds | sed 's/+00:00$/-03:00/'; }
 

@@ -8,12 +8,13 @@ set -euo pipefail
 
 SPRINT_ID="${1:?Usage: auto-close-sprint.sh <sprint-id> <project-slug>}"
 PROJECT="${2:?Missing project slug}"
-KANBAN_DIR="/home/carlosfarah/kanbania"
-BOARD_DIR="$KANBAN_DIR/board"
-ARCHIVE_DIR="$KANBAN_DIR/archive/board/done"
-SPRINTS_DIR="$KANBAN_DIR/sprints"
-ARCHIVE_SPRINTS="$KANBAN_DIR/archive/sprints"
-LOG_FILE="$KANBAN_DIR/logs/activity.jsonl"
+source "$(dirname "$0")/lib/config.sh"
+KANBAN_DIR="${KANBAN_ROOT}"
+BOARD_DIR="${KANBAN_ROOT}/board"
+ARCHIVE_DIR="${KANBAN_ROOT}/archive/board/done"
+SPRINTS_DIR="${KANBAN_ROOT}/sprints"
+ARCHIVE_SPRINTS="${KANBAN_ROOT}/archive/sprints"
+LOG_FILE="${KANBAN_ROOT}/logs/activity.jsonl"
 LOCK_FILE="/tmp/auto-close-sprint.lock"
 
 now() { date -Iseconds | sed 's/+00:00$/-03:00/'; }
@@ -87,7 +88,7 @@ TS=$(now)
 echo "{\"timestamp\":\"$TS\",\"agent\":\"chokidar\",\"task_id\":\"\",\"action\":\"sprint_closed\",\"details\":\"Auto-closed $SPRINT_ID, archived $ARCHIVED cards\"}" >> "$LOG_FILE"
 
 # 5. Commit and push
-cd "$KANBAN_DIR"
+cd "${KANBAN_ROOT}"
 git add -A
 git commit -m "[KANBAN] auto-close $SPRINT_ID: $ARCHIVED cards archived
 
@@ -100,9 +101,9 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>" || true
 git push || log_info "Push failed — will retry on next commit"
 
 # 6. Rebuild Docker if docker-compose exists
-if [ -f "$KANBAN_DIR/dashboard/docker-compose.yml" ] || [ -f "$KANBAN_DIR/docker-compose.yml" ]; then
-  COMPOSE_FILE="${KANBAN_DIR}/dashboard/docker-compose.yml"
-  [ -f "$COMPOSE_FILE" ] || COMPOSE_FILE="${KANBAN_DIR}/docker-compose.yml"
+if [ -f "${KANBAN_ROOT}/dashboard/docker-compose.yml" ] || [ -f "${KANBAN_ROOT}/docker-compose.yml" ]; then
+  COMPOSE_FILE="${KANBAN_ROOT}/dashboard/docker-compose.yml"
+  [ -f "$COMPOSE_FILE" ] || COMPOSE_FILE="${KANBAN_ROOT}/docker-compose.yml"
   log_info "Rebuilding Docker containers..."
   docker compose -f "$COMPOSE_FILE" up -d --build 2>&1 || log_info "Docker rebuild failed"
 fi

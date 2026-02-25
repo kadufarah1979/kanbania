@@ -24,8 +24,9 @@
 
 set -euo pipefail
 
-KANBAN_DIR="/home/carlosfarah/kanbania"
-SCRIPTS_DIR="$KANBAN_DIR/scripts"
+source "$(dirname "$0")/lib/config.sh"
+KANBAN_DIR="${KANBAN_ROOT}"
+SCRIPTS_DIR="${KANBAN_ROOT}/scripts"
 
 ACTION="${1:-}"
 PROJECT="${2:-$ACTION}"

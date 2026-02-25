@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Cron wrapper: dispara codex review a cada 5 min.
-# Lock evita execucoes simultaneas. Filtragem de cards esta no trigger.
-# Instalar: crontab -e -> */5 * * * * /home/carlosfarah/kanbania/scripts/cron-codex-review.sh
+# cron wrapper: triggers agent review every 5 min.
+# Lock prevents concurrent runs. Card filtering is in the trigger script.
+# Install: crontab -e -> */5 * * * * /path/to/kanbania/scripts/cron-codex-review.sh
 set -euo pipefail
 
-LOCK="/tmp/codex-review-cron.lock"
-KANBAN_DIR="/home/carlosfarah/kanbania"
-LOGFILE="$KANBAN_DIR/logs/codex-review-trigger.log"
+LOCK="/tmp/agent-review-cron.lock"
+source "$(dirname "$0")/lib/config.sh"
+LOGFILE="${KANBAN_ROOT}/logs/agent-review-trigger.log"
 
 exec 200>"$LOCK"
 flock -n 200 || exit 0
 
-cd "$KANBAN_DIR"
-git pull --rebase --quiet 2>/dev/null || true
+git -C "${KANBAN_ROOT}" pull --rebase --quiet 2>/dev/null || true
 
-"$KANBAN_DIR/scripts/trigger-codex-review.sh" >> "$LOGFILE" 2>&1
+"${KANBAN_ROOT}/scripts/trigger-agent-review.sh" >> "$LOGFILE" 2>&1

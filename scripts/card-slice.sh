@@ -11,8 +11,8 @@ set -euo pipefail
 
 TASK_ID="${1:?Usage: card-slice.sh <TASK-ID> <mode>}"
 MODE="${2:?Usage: card-slice.sh <TASK-ID> <full|rework|review|summary>}"
-KANBAN_DIR="/home/carlosfarah/kanbania"
-BOARD_DIR="$KANBAN_DIR/board"
+source "$(dirname "$0")/lib/config.sh"
+BOARD_DIR="${KANBAN_ROOT}/board"
 
 # Find card in any column
 TASK_FILE=""
