@@ -234,3 +234,4 @@ get_board_dirs               # → all board dirs (global + projects + subprojec
 - [docs/DASHBOARD_OPS.md](docs/DASHBOARD_OPS.md) — dashboard restart and troubleshooting
 - [docs/PROJECTS_GUIDE.md](docs/PROJECTS_GUIDE.md) — multi-project setup
 - [config.yaml](config.yaml) — annotated configuration reference
+test
