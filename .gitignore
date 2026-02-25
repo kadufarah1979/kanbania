@@ -34,3 +34,8 @@ dashboard/node_modules/
 # Next.js standalone build artifacts
 dashboard/.next/standalone/
 dashboard/.next/cache/
+
+# Kanbania — auto-added by setup.sh
+*.local
+logs/activity.jsonl
+logs/rework-pending.jsonl
