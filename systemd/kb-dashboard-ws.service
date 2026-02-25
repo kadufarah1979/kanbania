@@ -1,0 +1,20 @@
+[Unit]
+Description=Kanbania Dashboard - WebSocket server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/carlosfarah/kanbania-fresh/dashboard/node_modules/.bin/tsx server.ts
+WorkingDirectory=/home/carlosfarah/kanbania-fresh/dashboard
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/tmp/kanbania-ws.log
+StandardError=append:/tmp/kanbania-ws.log
+Environment=HOME=/home/carlosfarah
+Environment=PATH=/home/carlosfarah/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=KANBAN_ROOT=/home/carlosfarah/kanbania-fresh
+Environment=WS_PORT=8766
+
+[Install]
+WantedBy=default.target

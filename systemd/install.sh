@@ -9,7 +9,7 @@ TARGET_DIR="$HOME/.config/systemd/user"
 
 mkdir -p "$TARGET_DIR"
 
-for svc in kb-claude-code.service kb-codex.service; do
+for svc in kb-claude-code.service kb-codex.service kb-dashboard-ws.service; do
   ln -sf "$SCRIPT_DIR/$svc" "$TARGET_DIR/$svc"
   echo "Linked $svc -> $TARGET_DIR/$svc"
 done
@@ -17,9 +17,9 @@ done
 systemctl --user daemon-reload
 echo "daemon-reload done"
 
-for svc in kb-claude-code kb-codex; do
+for svc in kb-claude-code kb-codex kb-dashboard-ws; do
   systemctl --user enable --now "$svc"
   echo "Enabled and started $svc"
 done
 
-echo "Done. Use 'systemctl --user status kb-claude-code kb-codex' to check."
+echo "Done. Use 'systemctl --user status kb-claude-code kb-codex kb-dashboard-ws' to check."
