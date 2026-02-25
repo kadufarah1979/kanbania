@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import { getAllTasks, getActivity, getConfig } from "@/lib/kanban/reader";
+import { KANBAN_ROOT } from "@/lib/constants";
 
 export interface AgentStatus {
   agent: string;
@@ -139,8 +140,7 @@ export function GET(request: Request) {
 
     // 4b. Check heartbeat — if stale or missing, agent is offline
     // Heartbeat em KANBAN_ROOT/agents/ para garantir acesso pelo servidor Next.js
-    const kanbanRoot = process.env.KANBAN_ROOT || "/home/carlosfarah/kanbania";
-    const heartbeatPath = `${kanbanRoot}/agents/${agent}.heartbeat`;
+    const heartbeatPath = `${KANBAN_ROOT}/agents/${agent}.heartbeat`;
     let isOffline = false;
     try {
       const stat = fs.statSync(heartbeatPath);

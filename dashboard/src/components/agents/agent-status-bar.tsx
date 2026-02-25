@@ -3,8 +3,9 @@
 import { useCallback } from "react";
 import { Bot, Loader2, Clock, Eye, Wifi, WifiOff } from "lucide-react";
 import { useAgents } from "@/lib/hooks/use-agents";
+import { useConfig } from "@/lib/hooks/use-config";
 import { useWebSocket } from "@/lib/hooks/use-websocket";
-import { AGENT_COLORS } from "@/lib/constants";
+import { DEFAULT_AGENT_HEX_COLOR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { WSMessage } from "@/lib/types";
 import type { AgentStatus } from "@/app/api/agents/status/route";
@@ -47,22 +48,23 @@ const STATUS_CONFIG: Record<
   },
 };
 
-function AgentCard({ agent }: { agent: AgentStatus }) {
+function AgentCard({ agent, hexColor }: { agent: AgentStatus; hexColor: string }) {
   const config = STATUS_CONFIG[agent.status] || STATUS_CONFIG.idle;
   const Icon = config.icon;
-  const agentColor =
-    AGENT_COLORS[agent.agent] || "bg-gray-500/10 text-gray-500 border-gray-500/30";
   const timeAgo = formatDistanceToNow(new Date(agent.updated_at), {
     addSuffix: true,
     locale: ptBR,
   });
+  const cardStyle = {
+    backgroundColor: `${hexColor}14`,
+    color: hexColor,
+    borderColor: `${hexColor}33`,
+  };
 
   return (
     <div
-      className={cn(
-        "flex items-center gap-3 rounded-lg border px-4 py-3 transition-all",
-        agentColor
-      )}
+      className="flex items-center gap-3 rounded-lg border px-4 py-3 transition-all"
+      style={cardStyle}
     >
       <div className="flex items-center gap-2 min-w-0">
         <Bot className="h-4 w-4 shrink-0" />
@@ -122,6 +124,7 @@ interface AgentStatusBarProps {
 
 export function AgentStatusBar({ project }: AgentStatusBarProps) {
   const { data: agents, refetch } = useAgents({ project });
+  const { agents: configAgents } = useConfig();
 
   const handleWs = useCallback(
     (msg: WSMessage) => {
@@ -147,9 +150,11 @@ export function AgentStatusBar({ project }: AgentStatusBarProps) {
         Agentes em tempo real
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {agents.map((agent) => (
-          <AgentCard key={agent.agent} agent={agent} />
-        ))}
+        {agents.map((agent) => {
+          const agentCfg = configAgents.find((a) => a.id === agent.agent);
+          const hexColor = agentCfg?.color ?? DEFAULT_AGENT_HEX_COLOR;
+          return <AgentCard key={agent.agent} agent={agent} hexColor={hexColor} />;
+        })}
       </div>
     </div>
   );

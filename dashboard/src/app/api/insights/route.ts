@@ -4,16 +4,34 @@ import { getAllTasks, getAllSprints, getAllActivity } from "@/lib/kanban/reader"
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Custo blended (input+output) por 1M tokens por agente/modelo
-const COST_PER_1M_TOKENS: Record<string, number> = {
-  "claude-code": 9.0,   // Claude Sonnet blend (~$3 input + $15 output, ~50/50)
-  codex: 5.0,           // OpenAI Codex/GPT blend
-  kadufarah: 0,         // humano — sem custo de token
+// Blended cost (input+output) per 1M tokens — by provider.
+// Override via COST_PER_1M_TOKENS env var: '{"anthropic":9,"openai":5,"human":0}'
+const DEFAULT_COST_BY_PROVIDER: Record<string, number> = {
+  anthropic: 9.0,   // Claude Sonnet blend (~$3 input + $15 output, ~50/50)
+  openai: 5.0,      // OpenAI GPT blend
+  google: 3.0,      // Gemini blend
+  human: 0,
 };
 
-function tokenCostUsd(tokens: number, agent: string): number {
-  const rate = COST_PER_1M_TOKENS[agent] ?? 9.0; // default Claude
-  return +(tokens * rate / 1_000_000).toFixed(4);
+// Build lookup by agent id from config at request time
+import { getKanbanConfig } from "@/lib/kanban/config-reader";
+
+function getAgentCostRate(agentId: string): number {
+  try {
+    const config = getKanbanConfig();
+    const agent = config.agents.find((a) => a.id === agentId);
+    if (agent) {
+      const providerRate = DEFAULT_COST_BY_PROVIDER[agent.provider] ?? 9.0;
+      // role=pm or human provider has zero cost
+      if (agent.provider === "human" || agent.role === "pm") return 0;
+      return providerRate;
+    }
+  } catch { /* config unavailable */ }
+  return 9.0; // fallback
+}
+
+function tokenCostUsd(tokens: number, agentId: string): number {
+  return +(tokens * getAgentCostRate(agentId) / 1_000_000).toFixed(4);
 }
 
 export function GET(req: Request) {
