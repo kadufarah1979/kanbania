@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# Pre-review environment check — runs BEFORE Codex QA review.
+# pre-review-check.sh — Pre-review environment check (runs BEFORE agent QA review).
 # Detects scope from card content (file paths), runs ONLY relevant gates.
-# Outputs compact PASS/FAIL results for the Codex prompt.
+# Outputs compact PASS/FAIL results for the agent prompt.
 #
 # Usage: pre-review-check.sh <TASK-ID>
 # Exit 0 = all gates passed, Exit 1 = gate failure
 
 set -euo pipefail
 
+# ── Config ────────────────────────────────────────────────────────────────────
+
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPTS_DIR/lib/config.sh"
+
 TASK_ID="${1:?Usage: pre-review-check.sh <TASK-ID>}"
-KANBAN_DIR="/home/carlosfarah/kanbania"
-BOARD_DIR="$KANBAN_DIR/board"
+BOARD_DIR="$KANBAN_ROOT/board"
 TASK_FILE="$BOARD_DIR/review/$TASK_ID.md"
 
 if [ ! -f "$TASK_FILE" ]; then
@@ -18,59 +22,51 @@ if [ ! -f "$TASK_FILE" ]; then
   exit 1
 fi
 
-# ---- Resolve project directory from card frontmatter ----
+# ── Resolve project directory ─────────────────────────────────────────────────
+
 CARD_PROJECT=$(grep '^project:' "$TASK_FILE" | sed 's/^project: *"*//;s/"*$//' | head -1)
 if [ -z "$CARD_PROJECT" ]; then
   echo '{"error":"No project field in task card"}' >&2
   exit 1
 fi
 
-PROJECT_README="$KANBAN_DIR/projects/$CARD_PROJECT/README.md"
-if [ ! -f "$PROJECT_README" ]; then
-  echo "{\"error\":\"Project README not found: $CARD_PROJECT\"}" >&2
-  exit 1
+# Prefer config.local.yaml path; fallback to projects/<project>/README.md repo: field
+PROJECT_DIR="$(get_project_path "$CARD_PROJECT")"
+if [ -z "$PROJECT_DIR" ] || [ ! -d "$PROJECT_DIR" ]; then
+  # Fallback: read from project README.md
+  PROJECT_README="$KANBAN_ROOT/projects/$CARD_PROJECT/README.md"
+  if [ -f "$PROJECT_README" ]; then
+    PROJECT_DIR=$(grep '^repo:' "$PROJECT_README" | sed 's/^repo: *"*//;s/"*$//' | head -1)
+  fi
 fi
 
-PROJECT_DIR=$(grep '^repo:' "$PROJECT_README" | sed 's/^repo: *"*//;s/"*$//' | head -1)
 if [ -z "$PROJECT_DIR" ] || [ ! -d "$PROJECT_DIR" ]; then
-  echo "{\"error\":\"Project repo dir not found: $PROJECT_DIR\"}" >&2
+  echo "{\"error\":\"Project directory not found for: $CARD_PROJECT\"}" >&2
   exit 1
 fi
 
 LOCK_FILE="/tmp/${CARD_PROJECT}-gate.lock"
 
-# ---- Scope detection from card content (file paths > labels > title) ----
-CARD_CONTENT=$(cat "$TASK_FILE")
+# ── Scope detection ───────────────────────────────────────────────────────────
+
 HAS_BACKEND=false
 HAS_FRONTEND=false
 
-# 1st priority: actual file paths in card (grep file directly to avoid echo issues)
-if grep -qE 'backend/' "$TASK_FILE"; then
-  HAS_BACKEND=true
-fi
-if grep -qE 'frontend/' "$TASK_FILE"; then
-  HAS_FRONTEND=true
-fi
+# 1st priority: actual file paths in card
+if grep -qE 'backend/' "$TASK_FILE"; then HAS_BACKEND=true; fi
+if grep -qE 'frontend/' "$TASK_FILE"; then HAS_FRONTEND=true; fi
 
 # 2nd priority: labels
 if ! $HAS_BACKEND && ! $HAS_FRONTEND; then
-  if grep -qiE '^labels:.*\b(backend|api|testing)\b' "$TASK_FILE"; then
-    HAS_BACKEND=true
-  fi
-  if grep -qiE '^labels:.*\b(frontend|ux|ui)\b' "$TASK_FILE"; then
-    HAS_FRONTEND=true
-  fi
+  if grep -qiE '^labels:.*\b(backend|api|testing)\b' "$TASK_FILE"; then HAS_BACKEND=true; fi
+  if grep -qiE '^labels:.*\b(frontend|ux|ui)\b' "$TASK_FILE"; then HAS_FRONTEND=true; fi
 fi
 
 # 3rd priority: title keywords
 if ! $HAS_BACKEND && ! $HAS_FRONTEND; then
   TITLE=$(grep '^title:' "$TASK_FILE" | head -1)
-  if echo "$TITLE" | grep -qiE 'backend|api|endpoint|schema|model|pytest|mqtt|seed'; then
-    HAS_BACKEND=true
-  fi
-  if echo "$TITLE" | grep -qiE 'frontend|dashboard|component|page|sidebar|wizard|chart|tailwind|css'; then
-    HAS_FRONTEND=true
-  fi
+  if echo "$TITLE" | grep -qiE 'backend|api|endpoint|schema|model|pytest|mqtt|seed'; then HAS_BACKEND=true; fi
+  if echo "$TITLE" | grep -qiE 'frontend|dashboard|component|page|sidebar|wizard|chart|tailwind|css'; then HAS_FRONTEND=true; fi
 fi
 
 # Fallback: run both
@@ -84,7 +80,8 @@ echo "[pre-review] Scope: backend=$HAS_BACKEND frontend=$HAS_FRONTEND" >&2
 RESULTS=""
 OVERALL_PASS=true
 
-# ---------- Backend gate ----------
+# ── Backend gate ──────────────────────────────────────────────────────────────
+
 if $HAS_BACKEND; then
   echo "[pre-review] Running backend tests..." >&2
 
@@ -125,63 +122,63 @@ else
   RESULTS="${RESULTS}BACKEND: SKIP (no backend changes)\n"
 fi
 
-# ---------- Frontend gate (tsc + build, no E2E) ----------
+# ── Frontend gate (tsc + build) ───────────────────────────────────────────────
+
 if $HAS_FRONTEND; then
-  # Detect frontend dir (frontend/ or dashboard/src for kanbania)
+  # Detect frontend dir
   FRONTEND_DIR=""
-  if [ -d "$PROJECT_DIR/frontend" ]; then
-    FRONTEND_DIR="$PROJECT_DIR/frontend"
-  elif [ -d "$PROJECT_DIR/dashboard" ]; then
-    FRONTEND_DIR="$PROJECT_DIR/dashboard"
-  fi
+  for candidate in frontend dashboard src; do
+    if [ -d "$PROJECT_DIR/$candidate" ]; then
+      FRONTEND_DIR="$PROJECT_DIR/$candidate"
+      break
+    fi
+  done
 
   if [ -z "$FRONTEND_DIR" ]; then
     RESULTS="${RESULTS}TSC: SKIP (no frontend dir)\nBUILD: SKIP (no frontend dir)\n"
   else
+    echo "[pre-review] Running tsc..." >&2
+    TSC_EXIT=0
+    TSC_OUTPUT=$(cd "$FRONTEND_DIR" && npx tsc --noEmit 2>&1) || TSC_EXIT=$?
 
-  echo "[pre-review] Running tsc..." >&2
-  TSC_EXIT=0
-  TSC_OUTPUT=$(cd "$FRONTEND_DIR" && npx tsc --noEmit 2>&1) || TSC_EXIT=$?
-
-  if [ $TSC_EXIT -eq 0 ]; then
-    RESULTS="${RESULTS}TSC: PASS\n"
-  else
-    TSC_ERRORS=$(echo "$TSC_OUTPUT" | grep -c "error TS" || echo "0")
-    # Only first 10 error lines to limit tokens
-    TSC_HEAD=$(echo "$TSC_OUTPUT" | grep "error TS" | head -10)
-    RESULTS="${RESULTS}TSC: FAIL — ${TSC_ERRORS} errors\n${TSC_HEAD}\n"
-    OVERALL_PASS=false
-  fi
-
-  # Clean root-owned .next artifacts (created by Docker builds) to avoid EACCES on unlink
-  if [ -d "$FRONTEND_DIR/.next" ] && find "$FRONTEND_DIR/.next" -user root -maxdepth 3 2>/dev/null | grep -q .; then
-    echo "[pre-review] Cleaning root-owned .next artifacts via Docker (full wipe)..." >&2
-    docker run --rm -v "$FRONTEND_DIR:/app" alpine:latest \
-      sh -c "rm -rf /app/.next" 2>/dev/null || true
-  fi
-
-  echo "[pre-review] Running build..." >&2
-  BUILD_EXIT=0
-  BUILD_OUTPUT=$(cd "$FRONTEND_DIR" && npm run build 2>&1) || BUILD_EXIT=$?
-
-  if [ $BUILD_EXIT -eq 0 ]; then
-    RESULTS="${RESULTS}BUILD: PASS\n"
-  else
-    if echo "$BUILD_OUTPUT" | grep -q "EAI_AGAIN\|ENOTFOUND.*fonts"; then
-      RESULTS="${RESULTS}BUILD: SKIP (network error)\n"
+    if [ $TSC_EXIT -eq 0 ]; then
+      RESULTS="${RESULTS}TSC: PASS\n"
     else
-      BUILD_HEAD=$(echo "$BUILD_OUTPUT" | grep -E "Error:|error" | head -5)
-      RESULTS="${RESULTS}BUILD: FAIL\n${BUILD_HEAD}\n"
+      TSC_ERRORS=$(echo "$TSC_OUTPUT" | grep -c "error TS" || echo "0")
+      TSC_HEAD=$(echo "$TSC_OUTPUT" | grep "error TS" | head -10)
+      RESULTS="${RESULTS}TSC: FAIL — ${TSC_ERRORS} errors\n${TSC_HEAD}\n"
       OVERALL_PASS=false
     fi
-  fi
 
-  fi # end FRONTEND_DIR check
+    # Clean root-owned .next artifacts
+    if [ -d "$FRONTEND_DIR/.next" ] && find "$FRONTEND_DIR/.next" -user root -maxdepth 3 2>/dev/null | grep -q .; then
+      echo "[pre-review] Cleaning root-owned .next artifacts via Docker..." >&2
+      docker run --rm -v "$FRONTEND_DIR:/app" alpine:latest \
+        sh -c "rm -rf /app/.next" 2>/dev/null || true
+    fi
+
+    echo "[pre-review] Running build..." >&2
+    BUILD_EXIT=0
+    BUILD_OUTPUT=$(cd "$FRONTEND_DIR" && npm run build 2>&1) || BUILD_EXIT=$?
+
+    if [ $BUILD_EXIT -eq 0 ]; then
+      RESULTS="${RESULTS}BUILD: PASS\n"
+    else
+      if echo "$BUILD_OUTPUT" | grep -q "EAI_AGAIN\|ENOTFOUND.*fonts"; then
+        RESULTS="${RESULTS}BUILD: SKIP (network error)\n"
+      else
+        BUILD_HEAD=$(echo "$BUILD_OUTPUT" | grep -E "Error:|error" | head -5)
+        RESULTS="${RESULTS}BUILD: FAIL\n${BUILD_HEAD}\n"
+        OVERALL_PASS=false
+      fi
+    fi
+  fi
 else
   RESULTS="${RESULTS}TSC: SKIP (no frontend changes)\nBUILD: SKIP (no frontend changes)\n"
 fi
 
-# ---------- Output (compact) ----------
+# ── Output ────────────────────────────────────────────────────────────────────
+
 echo ""
 echo "GATES $TASK_ID"
 echo -e "$RESULTS"
