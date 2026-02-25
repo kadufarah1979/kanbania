@@ -1,380 +1,382 @@
-# AGENTS.md — Protocolo do Sistema Kanban
+# AGENTS.md — Kanban System Protocol
 
-> Este arquivo define as regras canonicas de operacao do kanban.
-> Se houver conflito com `CODEX.md` ou `CLAUDE.md`, este arquivo prevalece.
-> Dados de configuracao (agentes, prioridades, story points, colunas, sprint, OKR) estao em `config.yaml`.
-
----
-
-## 1. Visao Geral
-
-Sistema de gerenciamento de projetos pessoais do proprietario `kadufarah` usando Markdown + YAML frontmatter.
-
-Principios: Arquivo = entidade | Pasta = status | Git = historico | YAML = metadados | JSONL = log append-only.
-
-Estrutura global: `board/{backlog,todo,in-progress,review,done}/`, `archive/`, `sprints/`, `okrs/`, `projects/`, `templates/`, `logs/activity.jsonl`.
-
-Estrutura por subprojeto: `projects/<proj>/subprojects/<sub>/{board,sprints,okrs}/` — mesmas colunas, namespace isolado. Ver secao 3.2.
-
-### 1.1 Papeis dos Agentes
-
-| Agente | Papel | Colunas de atuacao | Transicoes permitidas |
-|---|---|---|---|
-| `claude-code` | Implementador | backlog, todo, in-progress, done (auto-approve) | `backlog -> todo`, `todo -> in-progress`, `in-progress -> review`, `in-progress -> done` (auto-approve, secao 4.4a) |
-| `codex` | Revisor (QA) | review | `review -> done` (aprovado), `review -> in-progress` (reprovado) |
-
-**Regras absolutas:**
-- `claude-code` move para `done` apenas tasks auto-approve (secao 4.4a). Tasks com codex review: destino final e `review`.
-- `codex` NUNCA implementa. Apenas revisa, aprova ou reprova.
-- Para tasks com codex review, somente `codex` move `review -> done` ou `review -> in-progress`.
+> This file defines the canonical operating rules for the kanban system.
+> In case of conflict with agent-specific files (e.g. CLAUDE.md, CODEX.md), this file prevails.
+> Configuration (agent IDs, priorities, story points, columns, sprint, OKR) is in `config.yaml`.
 
 ---
 
-## 2. Convencoes
+## 1. Overview
 
-### 2.1 IDs e Arquivos
+A personal project management system using Markdown + YAML frontmatter.
 
-| Entidade | ID | Arquivo |
+Principles: File = entity | Folder = status | Git = history | YAML = metadata | JSONL = append-only log.
+
+Global structure: `board/{backlog,todo,in-progress,review,done}/`, `archive/`, `sprints/`, `okrs/`, `projects/`, `templates/`, `logs/activity.jsonl`.
+
+Subproject structure: `projects/<proj>/subprojects/<sub>/{board,sprints,okrs}/` — same columns, isolated namespace. See section 3.2.
+
+### 1.1 Agent Roles
+
+Agent roles are defined in `config.yaml` under `agents[].role`. Valid roles:
+
+| Role | Can do | Board columns |
 |---|---|---|
-| Tarefa | `TASK-NNNN` | `TASK-NNNN.md` |
+| `implementer` | Claim, implement, submit for review | backlog → todo → in-progress → review (or done via auto-approve) |
+| `reviewer` | QA review, approve, reject | review → done (approved), review → in-progress (rejected) |
+| `both` | All of the above | all columns |
+| `pm` | Planning, sprint management | all columns (read) |
+
+**Absolute rules:**
+- The implementer moves to `done` only for auto-approve tasks (section 4.4a). For reviewer tasks: the final destination is `review`.
+- The reviewer NEVER implements. Only reviews, approves, or rejects.
+- For reviewed tasks, only the reviewer moves `review → done` or `review → in-progress`.
+
+Refer to `config.yaml` for the actual agent IDs assigned to each role.
+
+---
+
+## 2. Conventions
+
+### 2.1 IDs and Files
+
+| Entity | ID | File |
+|---|---|---|
+| Task | `TASK-NNNN` | `TASK-NNNN.md` |
 | OKR | `OKR-YYYY-QN-NN` | `YYYY-QN.md` |
 | Sprint | `sprint-NNN` | `sprint-NNN.md` |
-| Projeto | `slug-kebab` | `projects/<slug>/README.md` |
-| Subprojeto | `slug-kebab` | `projects/<proj>/subprojects/<sub>/README.md` |
+| Project | `slug-kebab` | `projects/<slug>/README.md` |
+| Subproject | `slug-kebab` | `projects/<proj>/subprojects/<sub>/README.md` |
 
-### 2.2 Regra de Resposta sobre Tasks
+### 2.2 Task Listing Rule
 
-Ao listar tasks para o proprietario: informar `project` e `subproject` (quando presente) em cada task. Se todas forem do mesmo projeto/subprojeto, declarar explicitamente. Nunca assumir projeto por contexto implicito.
+When listing tasks for the owner: always include `project` and `subproject` (when present) for each task. If all tasks belong to the same project/subproject, state it explicitly. Never assume project from implicit context.
 
 ---
 
-## 3. Schema Canonico de Tarefa
+## 3. Canonical Task Schema
 
-Arquivo: `board/**/TASK-NNNN.md`. Referencia completa: `templates/task.md`.
+File: `board/**/TASK-NNNN.md`. Full reference: `templates/task.md`.
 
-Campos obrigatorios: `id`, `title`, `project`, `priority`, `created_at`, `created_by`, `acted_by`.
+Required fields: `id`, `title`, `project`, `priority`, `created_at`, `created_by`, `acted_by`.
 
-Campos opcionais: `subproject`, `sprint`, `okr`, `labels`, `story_points`, `assigned_to`, `review_requested_from`, `depends_on`, `blocks`.
+Optional fields: `subproject`, `sprint`, `okr`, `labels`, `story_points`, `assigned_to`, `review_requested_from`, `depends_on`, `blocks`.
 
-Campos proibidos: `points`, `status` (status vem da pasta).
+Forbidden fields: `points`, `status` (status is determined by folder location).
 
-### 3.2 Resolucao de Caminho de Board
+### 3.2 Board Path Resolution
 
-Toda operacao que acessa o board ou sprint de uma task DEVE usar estas funcoes:
+Every operation accessing the board or sprint of a task MUST use these functions:
 
 **resolve_board(task)**
-1. Se `task.subproject` presente → `projects/<task.project>/subprojects/<task.subproject>/board/`
-2. Se `projects/<task.project>/board/` existir → `projects/<task.project>/board/`
-3. Senao → `board/` (projetos simples, legado)
+1. If `task.subproject` is present → `projects/<task.project>/subprojects/<task.subproject>/board/`
+2. If `projects/<task.project>/board/` exists → `projects/<task.project>/board/`
+3. Otherwise → `board/` (simple projects, legacy)
 
 **resolve_sprint(task)**
-1. Se `task.subproject` presente → `projects/<task.project>/subprojects/<task.subproject>/sprints/`
-2. Se `projects/<task.project>/sprints/` existir → `projects/<task.project>/sprints/`
-3. Senao → `sprints/` (global)
+1. If `task.subproject` is present → `projects/<task.project>/subprojects/<task.subproject>/sprints/`
+2. If `projects/<task.project>/sprints/` exists → `projects/<task.project>/sprints/`
+3. Otherwise → `sprints/` (global)
 
-Toda secao deste documento que menciona `board/` ou `sprints/` implicitamente usa `resolve_board()` / `resolve_sprint()` quando opera sobre uma task especifica.
+Every section in this document that mentions `board/` or `sprints/` implicitly uses `resolve_board()` / `resolve_sprint()` when operating on a specific task.
 
-### 3.3 Template de README de Subprojeto
+### 3.3 Subproject README Template
 
-Arquivo: `projects/<proj>/subprojects/<sub>/README.md`
+File: `projects/<proj>/subprojects/<sub>/README.md`
 
-Campos obrigatorios: `id`, `parent`, `name`, `description`, `repo`, `status`, `created_at`, `created_by`.
-Campos opcionais: `tech_stack`, `okrs`.
+Required fields: `id`, `parent`, `name`, `description`, `repo`, `status`, `created_at`, `created_by`.
+Optional fields: `tech_stack`, `okrs`.
 
-### 3.1 Regra de Decomposicao de Tasks
+### 3.1 Task Decomposition Rule
 
-Ao criar tasks (durante planejamento de sprint ou sob demanda), o agente DEVE avaliar o tamanho e amplitude antes de incluir no board:
+When creating tasks (sprint planning or on-demand), the agent MUST evaluate size and scope before adding to the board:
 
-1. **Task >= `epic_threshold` SP (5)**: DEVE ser decomposta em sub-tasks antes de entrar na sprint. Nunca criar task >= 5 SP sem quebra.
-2. **Task >= `max_single_task` SP (3) e que afete > 3 arquivos**: DEVE ser decomposta em sub-tasks.
-3. **Task que altere > `max_files_per_task` arquivos (5)**: DEVE ser decomposta independente de SP.
-4. **Analise de amplitude**: ao estimar SP, listar mentalmente os arquivos afetados. Se > 3 arquivos, considerar quebra. Se > 5 arquivos, quebra obrigatoria.
+1. **Task >= `epic_threshold` SP (5)**: MUST be decomposed into sub-tasks before entering the sprint. Never create a task >= 5 SP without breaking it down.
+2. **Task >= `max_single_task` SP (3) that affects > 3 files**: MUST be decomposed.
+3. **Task that changes > `max_files_per_task` files (5)**: MUST be decomposed regardless of SP.
+4. **Scope analysis**: when estimating SP, mentally list affected files. If > 3 files, consider splitting. If > 5 files, splitting is mandatory.
 
-Sub-tasks devem:
-- Referenciar `parent: TASK-NNNN` no frontmatter.
-- Usar `depends_on`/`blocks` para expressar ordem de execucao.
-- Ser independentemente deployaveis quando possivel.
-- Somar os mesmos SP da task original (ou ajustar se a decomposicao revelar complexidade diferente).
+Sub-tasks must:
+- Reference `parent: TASK-NNNN` in frontmatter.
+- Use `depends_on`/`blocks` to express execution order.
+- Be independently deployable when possible.
+- Sum the same SP as the original task (or adjust if decomposition reveals different complexity).
 
 ---
 
-## 4. Fluxo Canonico
+## 4. Canonical Flow
 
-### 4.1 Transicoes permitidas
+### 4.1 Allowed Transitions
 
-`backlog -> todo -> in-progress -> review -> done`
-Excecao: `review -> in-progress` (reprovada em QA pelo `codex`).
+`backlog → todo → in-progress → review → done`
+Exception: `review → in-progress` (rejected in QA by the reviewer agent).
 
-### 4.2 Selecao de trabalho
+### 4.2 Work Selection
 
-1. **Rework prioritario**: checar `logs/rework-pending.jsonl`. Se houver entradas com `status: pending`, retomar essas tasks primeiro (sao reprovacoes do codex). Ao iniciar o rework, atualizar a entrada para `status: started`.
-2. Retomar tarefa em `resolve_board(contexto)/in-progress/` com `assigned_to` igual ao agente.
-3. Se nao houver, escolher unassigned em `resolve_board(contexto)/todo/` por prioridade.
-4. Se `todo/` vazio da sprint ativa, aplicar secao 4.8 (promocao de lote) antes de selecionar.
-5. WIP limit: max 2 cards em `in-progress/` por agente.
+1. **Priority rework**: check `logs/rework-pending.jsonl`. If there are entries with `status: pending`, resume those tasks first (they are reviewer rejections). When starting rework, update the entry to `status: started`.
+2. Resume task in `resolve_board(context)/in-progress/` with `assigned_to` equal to the current agent.
+3. If none, pick unassigned from `resolve_board(context)/todo/` by priority.
+4. If `todo/` is empty for the active sprint, apply section 4.8 (batch promotion) before selecting.
+5. WIP limit: max 2 cards in `in-progress/` per agent.
 
 ### 4.3 Claim
 
-1. Verificar tarefa unassigned e WIP < 2.
-2. Definir `assigned_to`, mover para `in-progress/`, registrar `acted_by` e `activity.jsonl`.
+1. Verify task is unassigned and WIP < 2.
+2. Set `assigned_to`, move to `in-progress/`, record `acted_by` and `activity.jsonl`.
 
-### 4.3.1 Validacao Bloqueante de Projeto
+### 4.3.1 Blocking Project Validation
 
-Antes de claim/move/execucao: validar `project` + `subproject` no frontmatter contra o contexto do agente. Se qualquer campo diferir do contexto, abortar sem alterar board.
+Before claim/move/execution: validate `project` + `subproject` in frontmatter against the current agent context. If either field differs from context, abort without modifying the board.
 
-### 4.4 Conclusao de implementacao (claude-code)
+### 4.4 Implementation Completion (implementer role)
 
-Ao concluir a implementacao, determinar o nivel de review pela regra abaixo:
+When implementation is complete, determine the review level using the rule below:
 
-**Auto-approve** (claude-code faz self-review e move direto para done):
-- Tasks de 1-2 SP
-- Refactoring, docs, config, infra kanban
+**Auto-approve** (implementer performs self-review and moves directly to done):
+- Tasks of 1-2 SP
+- Refactoring, docs, config, kanban infra
 - Labels: `refactor`, `docs`, `config`, `chore`, `tooling`
 
-**Codex review obrigatorio**:
-- Tasks de 3+ SP
-- Features novas, mudancas em logica de negocio, API, auth, dados
+**Reviewer review required**:
+- Tasks of 3+ SP
+- New features, business logic changes, API, auth, data
 - Labels: `feature`, `security`, `api`, `database`
-- Na duvida: enviar para codex
+- When in doubt: send to reviewer
 
-#### 4.4a Fluxo auto-approve
+#### 4.4a Auto-approve flow
 
-1. Marcar criterios de aceite atendidos como `[x]`.
-2. Adicionar nota em `## Notas de Progresso`.
-3. Rodar testes relevantes. Se falharem, corrigir antes de prosseguir.
-4. Merge da branch `task/TASK-NNNN` na `main` + push.
-5. Mover direto para `done/`, registrar `acted_by` (action: `auto-approved`) e `activity.jsonl`.
-6. Deletar branch local e remota.
-7. Verificar se sprint esta completa (secao 4.4.2).
-8. Pegar proxima task (secao 4.2).
+1. Mark acceptance criteria as met with `[x]`.
+2. Add note in `## Progress Notes`.
+3. Run relevant tests. If they fail, fix before proceeding.
+4. Merge `task/TASK-NNNN` branch into `main` + push.
+5. Move directly to `done/`, record `acted_by` (action: `auto-approved`) and `activity.jsonl`.
+6. Delete local and remote branch.
+7. Check if sprint is complete (section 4.4.2).
+8. Pick next task (section 4.2).
 
-#### 4.4b Fluxo com codex review
+#### 4.4b Flow with reviewer review
 
-1. Marcar criterios de aceite atendidos como `[x]`.
-2. Adicionar nota em `## Notas de Progresso`.
-3. Definir `assigned_to: codex` e `review_requested_from: [codex]`.
-4. Mover para `review/`, registrar `acted_by` e `activity.jsonl`.
-5. Commit das alteracoes de codigo na branch `task/TASK-NNNN` + push da branch.
-6. Commit da movimentacao do card (board state) na branch `main` + push.
-7. Pegar proxima task disponivel (secao 4.2) — nao esperar o codex.
+1. Mark acceptance criteria as met with `[x]`.
+2. Add note in `## Progress Notes`.
+3. Set `assigned_to: <reviewer-agent-id>` and `review_requested_from: [<reviewer-agent-id>]`.
+4. Move to `review/`, record `acted_by` and `activity.jsonl`.
+5. Commit code changes to `task/TASK-NNNN` branch + push branch.
+6. Commit card movement (board state) to `main` branch + push.
+7. Pick next available task (section 4.2) — do not wait for reviewer.
 
-> Codigo de implementacao NUNCA vai direto para `main` sem review (self ou codex).
-> Sempre via branch `task/TASK-NNNN`.
+> Implementation code NEVER goes directly to `main` without review (self or reviewer).
+> Always via `task/TASK-NNNN` branch.
 
-### 4.4.1 Revisao de QA (codex)
+### 4.4.1 QA Review (reviewer role)
 
-> **WIP 1**: processar um unico card por vez. Completar todo o ciclo (review + decisao + commit + push) antes de pegar o proximo.
+> **WIP 1**: process a single card at a time. Complete the full cycle (review + decision + commit + push) before picking the next one.
 
-> **Isolamento por projeto**: NUNCA misturar cards de projetos/subprojetos diferentes na mesma sessao. Filtrar pelo campo `project` + `subproject` e processar apenas cards de **um unico projeto ou subprojeto** por vez.
+> **Project isolation**: NEVER mix cards from different projects/subprojects in the same session. Filter by `project` + `subproject` fields and process only cards from **a single project or subproject** at a time.
 
-> **Proibido**: processar multiplos cards em lote, acumular movimentacoes, ou fazer um unico commit para varios cards.
+> **Prohibited**: processing multiple cards in batch, accumulating movements, or making a single commit for multiple cards.
 
-Para cada card em `review/` com `review_requested_from: [codex]`:
+For each card in `review/` with `review_requested_from` containing this reviewer's agent ID:
 
-1. Selecionar **1 card** de um unico projeto/subprojeto (prioridade: maior prioridade, menor ID como desempate).
-2. Localizar o repositorio: se card tem `subproject` → `projects/<proj>/subprojects/<sub>/README.md` campo `repo`; senao → `projects/<proj>/README.md` campo `repo`.
-3. Avaliar criterios de aceite, codigo e testes **na branch `task/TASK-NNNN`** do repositorio do projeto.
-4. **Aprovado**:
-   a. Merge da branch `task/TASK-NNNN` na `main` do repo do projeto + push.
-   b. Mover card para `done/`, registrar `acted_by` e `activity.jsonl`.
-   c. Commit + push no repo kanbania (operacao atomica).
-   d. Deletar branch local e remota (`git branch -d task/TASK-NNNN && git push origin --delete task/TASK-NNNN`).
-   e. Verificar se sprint esta completa (secao 4.4.2).
-5. **Reprovado**:
-   a. Mover card para `in-progress/`, adicionar pendencias objetivas (`arquivo:linha`) em `## Notas de Progresso`, registrar `acted_by` e `activity.jsonl`.
-   b. Commit + push no repo kanbania (operacao atomica). Branch permanece aberta para correcoes.
-6. **Somente apos commit+push**: pegar o proximo card em `review/` e repetir desde o passo 1.
+1. Select **1 card** from a single project/subproject (priority: highest priority, lowest ID as tiebreaker).
+2. Locate the repository: if card has `subproject` → `projects/<proj>/subprojects/<sub>/README.md` `repo` field; otherwise → `projects/<proj>/README.md` `repo` field.
+3. Evaluate acceptance criteria, code, and tests **on the `task/TASK-NNNN` branch** of the project repository.
+4. **Approved**:
+   a. Merge `task/TASK-NNNN` into `main` of the project repo + push.
+   b. Move card to `done/`, record `acted_by` and `activity.jsonl`.
+   c. Commit + push in kanban repo (atomic operation).
+   d. Delete local and remote branch (`git branch -d task/TASK-NNNN && git push origin --delete task/TASK-NNNN`).
+   e. Check if sprint is complete (section 4.4.2).
+5. **Rejected**:
+   a. Move card to `in-progress/`, add objective pending items (`file:line`) in `## Progress Notes`, record `acted_by` and `activity.jsonl`.
+   b. Commit + push in kanban repo (atomic operation). Branch remains open for corrections.
+6. **Only after commit+push**: pick the next card in `review/` and repeat from step 1.
 
-> **Gate de QA**: para tasks com codex review, somente `codex` move `review -> done` ou `review -> in-progress`.
+> **QA Gate**: for reviewed tasks, only the reviewer agent moves `review → done` or `review → in-progress`.
 
-### 4.4.2 Deteccao automatica de sprint completa
+### 4.4.2 Automatic sprint completion detection
 
-Apos qualquer task ser movida para `done/`, o agente DEVE verificar:
+After any task is moved to `done/`, the agent MUST verify:
 
-1. Listar todas as tasks da sprint ativa que pertencem ao mesmo projeto/subprojeto.
-2. Se **todas** estao em `resolve_board(task)/done/` (nenhuma em backlog, todo, in-progress ou review):
-   a. Executar procedimento de encerramento de sprint (secao 7.1).
-   b. Se existir proxima sprint com `status: pending` para o mesmo projeto/subprojeto, ativa-la:
-      - Atualizar `status` para `active` e `resolve_sprint(task)/current.md`.
-      - Aplicar promocao de lote (secao 4.8) para popular `todo/`.
-   c. Commit + push (operacao atomica).
-   d. Iniciar trabalho na nova sprint (secao 4.2).
-3. Se **nao** estao todas em done: continuar normalmente (pegar proxima task).
+1. List all tasks of the active sprint belonging to the same project/subproject.
+2. If **all** are in `resolve_board(task)/done/` (none in backlog, todo, in-progress, or review):
+   a. Execute sprint closing procedure (section 7.1).
+   b. If a next sprint with `status: pending` exists for the same project/subproject, activate it:
+      - Update `status` to `active` and `resolve_sprint(task)/current.md`.
+      - Apply batch promotion (section 4.8) to populate `todo/`.
+   c. Commit + push (atomic operation).
+   d. Start work in new sprint (section 4.2).
+3. If **not** all in done: continue normally (pick next task).
 
-> Nenhuma etapa requer confirmacao do proprietario. O encerramento e ativacao sao automaticos.
+> No step requires owner confirmation. Closing and activation are automatic.
 
-### 4.4.3 Estrategia de branches
+### 4.4.3 Branch strategy
 
-**Regra**: codigo de implementacao vai para branch isolada. Board state (movimentacao de cards) vai para `main`.
+**Rule**: implementation code goes to an isolated branch. Board state (card movements) goes to `main`.
 
-**Fluxo completo:**
+**Full flow:**
 
-1. **Claim** (`todo -> in-progress`): criar branch `task/TASK-NNNN` a partir de `main`. Board state (move do card) commitado em `main`.
-2. **Implementacao**: todos os commits de codigo na branch `task/TASK-NNNN`. Push da branch para remote.
-3. **Move para review**: board state (card em `review/`) commitado em `main` + push. Branch `task/TASK-NNNN` ja esta no remote para revisao.
-4. **Aprovacao (codex)**: merge `task/TASK-NNNN` -> `main` + push. Board state (card em `done/`) commitado em `main`.
-5. **Reprovacao (codex)**: branch permanece aberta. `claude-code` faz correcoes na branch e repete o fluxo.
-6. **Cleanup**: apos merge, deletar branch local e remota (`git branch -d task/TASK-NNNN && git push origin --delete task/TASK-NNNN`).
+1. **Claim** (`todo → in-progress`): create `task/TASK-NNNN` branch from `main`. Board state (card move) committed to `main`.
+2. **Implementation**: all code commits on `task/TASK-NNNN` branch. Push branch to remote.
+3. **Move to review**: board state (card in `review/`) committed to `main` + push. `task/TASK-NNNN` branch is already on remote for review.
+4. **Approval (reviewer)**: merge `task/TASK-NNNN` → `main` + push. Board state (card in `done/`) committed to `main`.
+5. **Rejection (reviewer)**: branch stays open. Implementer makes corrections on branch and repeats the flow.
+6. **Cleanup**: after merge, delete local and remote branch.
 
-**Excecoes** (commit direto em `main`):
-- Alteracoes exclusivamente em arquivos do kanban (`board/`, `sprints/`, `okrs/`, `logs/`, `AGENTS.md`, `CLAUDE.md`, `config.yaml`).
-- Correcoes de emergencia (hotfix) aprovadas pelo proprietario.
+**Exceptions** (commit directly to `main`):
+- Changes exclusively to kanban files (`board/`, `sprints/`, `okrs/`, `logs/`, `AGENTS.md`, agent config files, `config.yaml`).
+- Emergency fixes (hotfix) approved by owner.
 
-### 4.5 Concorrencia
+### 4.5 Concurrency
 
-1. Card em `in-progress/` tem dono unico (`assigned_to`).
-2. Proibido editar/mover card de outro agente.
-3. Se bloqueado por card de outro agente, criar nova tarefa com `depends_on`.
-4. Mesmo TASK nao pode existir em mais de uma coluna.
-5. Move e operacao atomica (mesmo commit).
+1. Card in `in-progress/` has a single owner (`assigned_to`).
+2. Prohibited: editing/moving another agent's card.
+3. If blocked by another agent's card, create a new task with `depends_on`.
+4. The same TASK cannot exist in more than one column.
+5. Move is an atomic operation (single commit).
 
-### 4.5.1 Consistencia Transacional
+### 4.5.1 Transactional Consistency
 
-1. **Pre-condicao de estado**: cada transicao deve validar que o card esta na coluna de origem antes de mover.
-   Exemplo: `review -> in-progress` so executa se o card estiver em `board/review/` no momento da operacao.
-2. **Idempotencia**: se o estado alvo ja estiver aplicado, a operacao deve encerrar sem nova mutacao.
-3. **Conflito de corrida**: ao falhar pre-condicao, abortar sem alterar board e registrar evento em `activity.jsonl`.
+1. **State precondition**: each transition must validate that the card is in the source column before moving.
+2. **Idempotency**: if the target state is already applied, the operation must end without a new mutation.
+3. **Race conflict**: if precondition fails, abort without modifying board and record event in `activity.jsonl`.
 
-### 4.6 Ciclo autonomo pos-implementacao (claude-code)
+### 4.6 Autonomous post-implementation cycle (implementer role)
 
-1. Rodar testes relevantes do projeto.
-2. Adicionar comentario em `## Notas de Progresso` com resultado dos testes.
-3. **Testes passaram**: seguir secao 4.4 (mover para `review/`). Se `todo/` vazio da sprint ativa, aplicar secao 4.8. Pegar proxima task (secao 4.2).
-4. **Testes falharam**: remover `assigned_to`, mover task para `todo/`, commit + push. Pegar proxima task (secao 4.2).
+1. Run relevant project tests.
+2. Add comment in `## Progress Notes` with test results.
+3. **Tests passed**: follow section 4.4 (move to `review/`). If `todo/` is empty for the active sprint, apply section 4.8. Pick next task (section 4.2).
+4. **Tests failed**: remove `assigned_to`, move task to `todo/`, commit + push. Pick next task (section 4.2).
 
-Nenhuma etapa requer confirmacao do proprietario.
+No step requires owner confirmation.
 
-### 4.7 Contexto de projeto do agente
+### 4.7 Agent project context
 
-O contexto do agente e determinado pelo diretorio de trabalho onde foi iniciado: `project` e, quando aplicavel, `subproject`. Antes de claim ou execucao, comparar ambos os campos da task com o contexto atual. Se qualquer campo nao corresponder, ignorar a task.
+The agent's context is determined by the working directory where it was started: `project` and, when applicable, `subproject`. Before claim or execution, compare both fields of the task against the current context. If either field does not match, ignore the task.
 
-### 4.8 Distribuicao por lote de prioridade
+### 4.8 Priority batch distribution
 
-Na criacao da sprint, todos os cards entram em `resolve_board(contexto)/backlog/`.
-A promocao para `todo/` ocorre por **lote**:
+At sprint creation, all cards enter `resolve_board(context)/backlog/`.
+Promotion to `todo/` occurs in **batches**:
 
-1. **Selecao do ancora**: card de maior prioridade em `resolve_board(contexto)/backlog/` da sprint
-   (desempate: menor ID numerico).
-2. **Coleta da cadeia**: todos os cards ligados por `depends_on` ou `blocks`
-   ao ancora, recursivamente.
-3. **Promocao**: mover ancora + cadeia para `resolve_board(contexto)/todo/`.
+1. **Anchor selection**: highest priority card in `resolve_board(context)/backlog/` of the sprint (tiebreaker: lowest numeric ID).
+2. **Chain collection**: all cards linked by `depends_on` or `blocks` to the anchor, recursively.
+3. **Promotion**: move anchor + chain to `resolve_board(context)/todo/`.
 
-**Gatilho**: aplicar sempre que `todo/` nao tiver cards da sprint ativa
-(ao criar sprint, ao concluir lote anterior, ou ao iniciar sessao).
+**Trigger**: apply whenever `todo/` has no cards from the active sprint (at sprint creation, when previous batch completes, or when starting a session).
 
-**Ativacao de sprint**: ao ativar uma sprint (status: pending -> active), promover **todas** as tasks da sprint de `backlog/` para `todo/` de uma vez. A distribuicao por lote aplica-se apenas durante a execucao da sprint (quando todo/ esvazia antes de backlog/).
+**Sprint activation**: when activating a sprint (status: pending → active), promote **all** sprint tasks from `backlog/` to `todo/` at once. Batch distribution applies only during sprint execution (when todo/ empties before backlog/).
 
-Dentro do lote em `todo/`, a ordem de execucao segue secao 4.2 (prioridade).
+Within the batch in `todo/`, execution order follows section 4.2 (priority).
 
 ---
 
-## 5. Log de Atividades
+## 5. Activity Log
 
-Arquivo: `logs/activity.jsonl` — append-only, 1 JSON por linha.
+File: `logs/activity.jsonl` — append-only, 1 JSON per line.
 
-Formato: `{"timestamp":"ISO-8601","agent":"...","action":"...","entity_type":"task","entity_id":"TASK-NNNN","details":"...","project":"..."}`
+Format: `{"timestamp":"ISO-8601","agent":"...","action":"...","entity_type":"task","entity_id":"TASK-NNNN","details":"...","project":"..."}`
 
-Acoes validas: `create`, `update`, `move`, `claim`, `release`, `comment`, `complete`, `delete`.
+Valid actions: `create`, `update`, `move`, `claim`, `release`, `comment`, `complete`, `delete`.
 
-**Leitura**: agentes devem ler apenas as ultimas 20 linhas (`tail -20`). Nunca ler o arquivo completo.
-
----
-
-## 6. Commits do Kanban
-
-Formato: `[KANBAN] <acao> <entidade-id>: <descricao curta>` + `Agent: <id>` no corpo.
-
-1 commit por mudanca logica. Evitar micro-commits.
-
-### 6.1 Sincronizacao Obrigatoria
-
-- Operacao mutavel so termina apos `commit` + `push`.
-- Antes de editar board, executar `scripts/kanban-sync-check.sh`.
-- Se `push` falhar, parar e registrar pendencia em `activity.jsonl`.
-
-### 6.2 Arquivos do Board sao Artefatos Normais
-
-- Arquivos em `board/` (backlog, todo, in-progress, review, done) NUNCA sao "inesperados" ou "sujeira".
-- Se `git status` mostrar arquivos untracked ou modified em `board/`, a acao correta e SEMPRE commitar e push.
-- Nunca perguntar ao proprietario o que fazer com arquivos do board. Commitar diretamente.
-- Se `kanban-sync-check.sh` falhar por arquivo nao commitado, a solucao e: `git add` + `git commit` + `git push`.
+**Reading**: agents should read only the last 20 lines (`tail -20`). Never read the full file.
 
 ---
 
-## 7. Done e Archive
+## 6. Kanban Commits
 
-Destino operacional diario: `board/done/`.
+Format: `[KANBAN] <action> <entity-id>: <short description>` + `Agent: <id>` in commit body.
 
-### 7.1 Encerramento de Sprint
+1 commit per logical change. Avoid micro-commits.
 
-Executado automaticamente pela secao 4.4.2 ou pela verificacao de consistencia ao iniciar sessao.
+### 6.1 Mandatory Synchronization
 
-1. Identificar todos os cards em `resolve_board(sprint)/done/` pertencentes a sprint sendo encerrada.
-2. Mover esses cards para `resolve_board(sprint)/archive/done/`.
-3. Mover sprint de `resolve_sprint(sprint)/` para `resolve_sprint(sprint)/archive/`.
-4. Registrar em `activity.jsonl` com `action: archive`.
-5. Atualizar status da sprint para `completed`.
-6. Commit unico: `[KANBAN] archive sprint-NNN: encerrar sprint`.
+- Mutable operation only completes after `commit` + `push`.
+- Before editing board, run `scripts/kanban-sync-check.sh`.
+- If `push` fails, stop and record pending in `activity.jsonl`.
 
-> **Obrigatorio**: nenhuma sprint pode ter `status: closed` com cards ainda em `done/`. Se detectado, arquivar imediatamente.
+### 6.2 Board Files are Normal Artifacts
 
----
-
-## 8. OKRs e Sprints
-
-Propor somente quando: solicitado pelo proprietario, inicio de trimestre sem OKR, ou sprint expirada.
-
-Regras de OKR e Sprint estao em `config.yaml`. OKR/sprint precisam de aprovacao do proprietario.
-
-### 8.1 Politica de Worktree por Sprint
-
-- Criar worktree dedicada (`/tmp/kanbania-sprint-NNN`) com branch dedicada por sprint.
-- Encerrar sprint com procedimento 7.1, merge/push e remocao da worktree.
+- Files in `board/` (backlog, todo, in-progress, review, done) are NEVER "unexpected" or "dirty".
+- If `git status` shows untracked or modified files in `board/`, the correct action is ALWAYS to commit and push.
+- Never ask the owner what to do with board files. Commit directly.
+- If `kanban-sync-check.sh` fails due to uncommitted files, the solution is: `git add` + `git commit` + `git push`.
 
 ---
 
-## 9. Projetos Externos
+## 7. Done and Archive
 
-1. Resolver contexto da task:
-   - Com `subproject`: ler `projects/<proj>/subprojects/<sub>/README.md`
-   - Sem `subproject`: ler `projects/<proj>/README.md`
-2. Executar implementacao no repositorio indicado pelo campo `repo` do README.
-3. Registrar progresso no kanban.
+Daily operational destination: `board/done/`.
 
-### 9.1 Worktree por Projeto
+### 7.1 Sprint Closing
 
-- Cada projeto opera em worktree dedicada (proibido compartilhar).
-- Commits kanban somente na worktree `kanbania`.
-- Validar `pwd` e `git rev-parse --show-toplevel` antes de commit.
+Executed automatically by section 4.4.2 or by consistency check on session start.
 
-### 9.2 Publicacao
+1. Identify all cards in `resolve_board(sprint)/done/` belonging to the sprint being closed.
+2. Move those cards to `resolve_board(sprint)/archive/done/`.
+3. Move sprint from `resolve_sprint(sprint)/` to `resolve_sprint(sprint)/archive/`.
+4. Record in `activity.jsonl` with `action: archive`.
+5. Update sprint status to `completed`.
+6. Single commit: `[KANBAN] archive sprint-NNN: close sprint`.
 
-- Worktree deve ter upstream configurado.
-- `git fetch`/`rebase` antes de alteracoes mutaveis.
-- Proibido acumular commits sem push.
+> **Mandatory**: no sprint can have `status: closed` with cards still in `done/`. If detected, archive immediately.
 
 ---
 
-## 10. Regras de Ouro
+## 8. OKRs and Sprints
 
-1. Ler este arquivo antes de operar no kanban.
-2. Atualizar `acted_by` e `activity.jsonl` em toda operacao.
-3. Respeitar concorrencia (secao 4.5).
-4. Nunca violar schema canonico.
-5. Nunca alterar linhas antigas de `activity.jsonl`.
-6. Usar identificador de agente valido.
-7. Nao impor OKR/sprint sem aprovacao.
-8. Avaliar criterios de aceite antes de mover para `review/`.
-9. Executar `kanban-sync-check.sh` antes de operacoes mutaveis.
-10. Finalizar operacao mutavel com `commit` + `push`.
+Propose only when: requested by owner, start of quarter without OKR, or expired sprint.
+
+OKR and Sprint rules are in `config.yaml`. OKR/sprint require owner approval.
+
+### 8.1 Worktree Policy per Sprint
+
+- Create dedicated worktree (`/tmp/<system-name>-sprint-NNN`) with dedicated branch per sprint.
+- Close sprint with procedure 7.1, merge/push and worktree removal.
 
 ---
 
-## 11. Eficiencia Operacional
+## 9. External Projects
 
-1. Descoberta progressiva: caminhos especificos antes de busca global.
-2. Evitar comandos de alta verbosidade sem filtro.
-3. Reutilizar contexto ja coletado.
-4. Preferir 2-3 comandos pequenos e direcionados.
-5. So abrir artefatos grandes quando essenciais.
-6. Ler `activity.jsonl` com `tail -20`, nunca o arquivo completo.
+1. Resolve task context:
+   - With `subproject`: read `projects/<proj>/subprojects/<sub>/README.md`
+   - Without `subproject`: read `projects/<proj>/README.md`
+2. Execute implementation in the repository indicated by `repo` field of README.
+3. Record progress in kanban.
+
+### 9.1 Worktree per Project
+
+- Each project operates in a dedicated worktree (sharing is prohibited).
+- Kanban commits only in the kanban worktree.
+- Validate `pwd` and `git rev-parse --show-toplevel` before commit.
+
+### 9.2 Publishing
+
+- Worktree must have upstream configured.
+- `git fetch`/`rebase` before mutable operations.
+- Prohibited: accumulating commits without push.
+
+---
+
+## 10. Golden Rules
+
+1. Read this file before operating in kanban.
+2. Update `acted_by` and `activity.jsonl` on every operation.
+3. Respect concurrency (section 4.5).
+4. Never violate the canonical schema.
+5. Never alter old lines in `activity.jsonl`.
+6. Use a valid agent identifier (from `config.yaml`).
+7. Do not impose OKR/sprint without owner approval.
+8. Evaluate acceptance criteria before moving to `review/`.
+9. Run `kanban-sync-check.sh` before mutable operations.
+10. Finalize mutable operation with `commit` + `push`.
+
+---
+
+## 11. Operational Efficiency
+
+1. Progressive discovery: specific paths before global search.
+2. Avoid high-verbosity commands without filters.
+3. Reuse already collected context.
+4. Prefer 2-3 small, targeted commands.
+5. Only open large artifacts when essential.
+6. Read `activity.jsonl` with `tail -20`, never the full file.
