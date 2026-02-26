@@ -9,6 +9,7 @@ interface UseAgentsOptions {
 }
 
 const FALLBACK_INTERVAL = 15_000;
+const POLLING_INTERVAL = 30_000;
 
 export function useAgents(options: UseAgentsOptions = {}) {
   const { project } = options;
@@ -37,8 +38,9 @@ export function useAgents(options: UseAgentsOptions = {}) {
   }, [fetch_]);
 
   useEffect(() => {
-    if (connected) return;
-    const timer = setInterval(fetch_, FALLBACK_INTERVAL);
+    // Polling rápido quando desconectado, lento quando conectado (WS já notifica em tempo real)
+    const interval = connected ? POLLING_INTERVAL : FALLBACK_INTERVAL;
+    const timer = setInterval(fetch_, interval);
     return () => clearInterval(timer);
   }, [connected, fetch_]);
 
