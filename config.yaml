@@ -104,3 +104,20 @@ subprojects:
   projects_with_subprojects:
     - kanbania
     - tecpag
+
+# Integracao com X (Twitter)
+# Credenciais ficam em config.local.yaml (gitignored).
+# Documentacao: https://developer.twitter.com/en/portal/dashboard
+x_integration:
+  enabled: true
+  # Template do tweet. Variaveis disponíveis:
+  #   {title}         — titulo da task
+  #   {id}            — ex: TASK-0042
+  #   {project}       — nome do projeto
+  #   {story_points}  — pontos da task
+  #   {sprint}        — sprint da task
+  #   {labels}        — labels separadas por virgula
+  tweet_template: "✅ {title}\n\n#{project} #kanbania #buildinpublic"
+  # Publica apenas tasks com esses labels (vazio = publica todas)
+  # Exemplo: "feature,bug"
+  only_labels: ""
