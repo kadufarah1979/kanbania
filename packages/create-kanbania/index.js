@@ -34,9 +34,12 @@ const TIMEZONES = [
 async function main() {
   console.log(BANNER)
 
-  const targetDir = process.argv[2]
+  const args = process.argv.slice(2)
+  const useDefaults = args.includes('--yes') || args.includes('-y')
+  const targetDir = args.find(a => !a.startsWith('-'))
+
   if (!targetDir) {
-    console.error(chalk.red('Usage: npx create-kanbania <directory>'))
+    console.error(chalk.red('Usage: npx create-kanbania <directory> [--yes]'))
     process.exit(1)
   }
 
@@ -49,7 +52,13 @@ async function main() {
 
   console.log(chalk.bold(`Creating Kanbania at ${chalk.cyan(absTarget)}\n`))
 
-  const answers = await prompts(
+  if (useDefaults) {
+    console.log(chalk.dim('  Using defaults (--yes)\n'))
+  }
+
+  const answers = useDefaults
+    ? { owner: process.env.USER || 'me', timezone: 'America/Sao_Paulo', agents: ['claude-code', 'codex'], git: true }
+    : await prompts(
     [
       {
         type: 'text',
