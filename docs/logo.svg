@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d0d18;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a0a14;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Cyan glow filter -->
+    <filter id="cyanGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Purple glow filter -->
+    <filter id="purpleGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Soft glow for cards -->
+    <filter id="cardGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Column gradient -->
+    <linearGradient id="colGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#13132a;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Cyan card gradient -->
+    <linearGradient id="cyanCard" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:0.25" />
+      <stop offset="100%" style="stop-color:#0099cc;stop-opacity:0.15" />
+    </linearGradient>
+
+    <!-- Purple card gradient -->
+    <linearGradient id="purpleCard" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a855f7;stop-opacity:0.25" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:0.15" />
+    </linearGradient>
+
+    <!-- Green card gradient (done) -->
+    <linearGradient id="greenCard" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:0.25" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:0.15" />
+    </linearGradient>
+
+    <!-- Outer ring gradient -->
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:0.6" />
+      <stop offset="50%" style="stop-color:#a855f7;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0.6" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="80" ry="80" fill="url(#bgGrad)"/>
+
+  <!-- Subtle outer ring -->
+  <rect width="512" height="512" rx="80" ry="80"
+        fill="none" stroke="url(#ringGrad)" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- ── Three kanban columns ── -->
+
+  <!-- Column 1: Backlog -->
+  <rect x="68" y="120" width="108" height="272" rx="12" ry="12"
+        fill="url(#colGrad)" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.2"/>
+
+  <!-- Column 2: In Progress -->
+  <rect x="202" y="120" width="108" height="272" rx="12" ry="12"
+        fill="url(#colGrad)" stroke="#a855f7" stroke-width="1" stroke-opacity="0.3"/>
+
+  <!-- Column 3: Done -->
+  <rect x="336" y="120" width="108" height="272" rx="12" ry="12"
+        fill="url(#colGrad)" stroke="#10b981" stroke-width="1" stroke-opacity="0.2"/>
+
+  <!-- Column header dots -->
+  <circle cx="90" cy="142" r="5" fill="#00d4ff" opacity="0.7" filter="url(#cyanGlow)"/>
+  <circle cx="224" cy="142" r="5" fill="#a855f7" opacity="0.7" filter="url(#purpleGlow)"/>
+  <circle cx="358" cy="142" r="5" fill="#10b981" opacity="0.7"/>
+
+  <!-- Column header lines -->
+  <line x1="103" y1="142" x2="162" y2="142" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.4" stroke-linecap="round"/>
+  <line x1="237" y1="142" x2="296" y2="142" stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.4" stroke-linecap="round"/>
+  <line x1="371" y1="142" x2="430" y2="142" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.4" stroke-linecap="round"/>
+
+  <!-- ── Cards Column 1 (Backlog) — 3 cards, cyan ── -->
+  <rect x="80" y="162" width="84" height="34" rx="6" fill="url(#cyanCard)"
+        stroke="#00d4ff" stroke-width="1" stroke-opacity="0.5" filter="url(#cardGlow)"/>
+  <line x1="92" y1="174" x2="152" y2="174" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
+  <line x1="92" y1="184" x2="136" y2="184" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.3" stroke-linecap="round"/>
+
+  <rect x="80" y="206" width="84" height="34" rx="6" fill="url(#cyanCard)"
+        stroke="#00d4ff" stroke-width="1" stroke-opacity="0.4"/>
+  <line x1="92" y1="218" x2="148" y2="218" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.5" stroke-linecap="round"/>
+  <line x1="92" y1="228" x2="130" y2="228" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.25" stroke-linecap="round"/>
+
+  <rect x="80" y="250" width="84" height="34" rx="6" fill="url(#cyanCard)"
+        stroke="#00d4ff" stroke-width="1" stroke-opacity="0.3"/>
+  <line x1="92" y1="262" x2="152" y2="262" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.4" stroke-linecap="round"/>
+  <line x1="92" y1="272" x2="140" y2="272" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.2" stroke-linecap="round"/>
+
+  <!-- ── Cards Column 2 (In Progress) — 2 cards, purple — glowing ── -->
+  <rect x="214" y="162" width="84" height="34" rx="6" fill="url(#purpleCard)"
+        stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.8" filter="url(#purpleGlow)"/>
+  <line x1="226" y1="174" x2="286" y2="174" stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.8" stroke-linecap="round"/>
+  <line x1="226" y1="184" x2="270" y2="184" stroke="#a855f7" stroke-width="1" stroke-opacity="0.4" stroke-linecap="round"/>
+
+  <rect x="214" y="206" width="84" height="34" rx="6" fill="url(#purpleCard)"
+        stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.6" filter="url(#purpleGlow)"/>
+  <line x1="226" y1="218" x2="282" y2="218" stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
+  <line x1="226" y1="228" x2="264" y2="228" stroke="#a855f7" stroke-width="1" stroke-opacity="0.35" stroke-linecap="round"/>
+
+  <!-- ── Cards Column 3 (Done) — 4 cards, green ── -->
+  <rect x="348" y="162" width="84" height="34" rx="6" fill="url(#greenCard)"
+        stroke="#10b981" stroke-width="1" stroke-opacity="0.5"/>
+  <!-- checkmark -->
+  <polyline points="360,180 366,186 376,170" fill="none" stroke="#10b981" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+  <line x1="382" y1="174" x2="422" y2="174" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.5" stroke-linecap="round"/>
+  <line x1="382" y1="184" x2="412" y2="184" stroke="#10b981" stroke-width="1" stroke-opacity="0.3" stroke-linecap="round"/>
+
+  <rect x="348" y="206" width="84" height="34" rx="6" fill="url(#greenCard)"
+        stroke="#10b981" stroke-width="1" stroke-opacity="0.4"/>
+  <polyline points="360,224 366,230 376,214" fill="none" stroke="#10b981" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+  <line x1="382" y1="218" x2="420" y2="218" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.4" stroke-linecap="round"/>
+  <line x1="382" y1="228" x2="408" y2="228" stroke="#10b981" stroke-width="1" stroke-opacity="0.25" stroke-linecap="round"/>
+
+  <rect x="348" y="250" width="84" height="34" rx="6" fill="url(#greenCard)"
+        stroke="#10b981" stroke-width="1" stroke-opacity="0.3"/>
+  <polyline points="360,268 366,274 376,258" fill="none" stroke="#10b981" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+  <line x1="382" y1="262" x2="418" y2="262" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.35" stroke-linecap="round"/>
+  <line x1="382" y1="272" x2="406" y2="272" stroke="#10b981" stroke-width="1" stroke-opacity="0.2" stroke-linecap="round"/>
+
+  <rect x="348" y="294" width="84" height="34" rx="6" fill="url(#greenCard)"
+        stroke="#10b981" stroke-width="1" stroke-opacity="0.25"/>
+  <polyline points="360,312 366,318 376,302" fill="none" stroke="#10b981" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+  <line x1="382" y1="306" x2="416" y2="306" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.3" stroke-linecap="round"/>
+  <line x1="382" y1="316" x2="404" y2="316" stroke="#10b981" stroke-width="1" stroke-opacity="0.18" stroke-linecap="round"/>
+
+  <!-- ── Neural / AI connection lines between columns ── -->
+  <!-- Col1 card1 → Col2 card1 (animated feel, dashed) -->
+  <line x1="164" y1="179" x2="214" y2="179"
+        stroke="#00d4ff" stroke-width="1" stroke-opacity="0.35" stroke-dasharray="4,3"/>
+  <!-- Col2 card1 → Col3 card1 -->
+  <line x1="298" y1="179" x2="348" y2="179"
+        stroke="#a855f7" stroke-width="1" stroke-opacity="0.35" stroke-dasharray="4,3"/>
+
+  <!-- ── AI agent nodes (circles on top of columns) ── -->
+  <!-- Agent 1: claude-code (cyan) — above col 2 -->
+  <circle cx="256" cy="90" r="18" fill="#0d0d18" stroke="#00d4ff" stroke-width="2" filter="url(#cyanGlow)"/>
+  <!-- Brain/AI icon simplified: two arcs -->
+  <path d="M248,88 Q256,80 264,88 Q264,96 256,96 Q248,96 248,88 Z"
+        fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.9"/>
+  <line x1="252" y1="92" x2="252" y2="96" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.6"/>
+  <line x1="256" y1="96" x2="256" y2="100" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.6"/>
+  <line x1="260" y1="92" x2="260" y2="96" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.6"/>
+
+  <!-- Agent connection line to col2 top -->
+  <line x1="256" y1="108" x2="256" y2="120"
+        stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="3,2"/>
+
+  <!-- ── Bottom: "Kanbania" wordmark area — subtle glow bar ── -->
+  <rect x="120" y="420" width="272" height="2" rx="1"
+        fill="url(#ringGrad)" opacity="0.5"/>
+
+  <!-- Bottom text -->
+  <text x="256" y="455" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace"
+        font-size="26" font-weight="700" letter-spacing="3"
+        text-anchor="middle" fill="#ffffff" opacity="0.9">KANBANIA</text>
+  <text x="256" y="476" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace"
+        font-size="10" letter-spacing="2"
+        text-anchor="middle" fill="#00d4ff" opacity="0.6">AI-NATIVE KANBAN</text>
+
+</svg>
