@@ -1,0 +1,24 @@
+{
+  "name": "create-kanbania",
+  "version": "0.1.0",
+  "description": "Create a new Kanbania project — AI-native, file-based kanban for autonomous agents",
+  "keywords": ["kanbania", "kanban", "ai", "claude", "codex", "project-management"],
+  "homepage": "https://github.com/kadufarah1979/kanbania",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-kanbania": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "templates/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "fs-extra": "^11.2.0",
+    "prompts": "^2.4.2"
+  }
+}
