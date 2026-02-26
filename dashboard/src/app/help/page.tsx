@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Rocket, Terminal, GitBranch, Server, FolderTree,
-  Play, Square, Eye, ArrowRight, Shield, Bot, Layers,
+  Play, Square, Eye, ArrowRight, Shield, Bot, Layers, PackageOpen,
 } from "lucide-react";
 
 function CommandRow({ cmd, desc }: { cmd: string; desc: string }) {
@@ -29,8 +29,11 @@ export default function HelpPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="quickstart" className="w-full">
+      <Tabs defaultValue="install" className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-1">
+          <TabsTrigger value="install" className="gap-1.5">
+            <PackageOpen className="h-4 w-4" /> Instalacao
+          </TabsTrigger>
           <TabsTrigger value="quickstart" className="gap-1.5">
             <Rocket className="h-4 w-4" /> Inicio Rapido
           </TabsTrigger>
@@ -50,6 +53,68 @@ export default function HelpPage() {
             <FolderTree className="h-4 w-4" /> Estrutura
           </TabsTrigger>
         </TabsList>
+
+        {/* Instalacao */}
+        <TabsContent value="install" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PackageOpen className="h-5 w-5" /> npx create-kanbania
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                A forma mais rapida de criar um novo workspace Kanbania com dashboard e servicos systemd configurados automaticamente.
+              </p>
+              <CommandRow cmd="npx create-kanbania meu-projeto" desc="Wizard interativo: define owner, timezone e agentes, instala tudo" />
+              <CommandRow cmd="npx create-kanbania meu-projeto --yes" desc="Modo nao-interativo com valores padrao (ideal para CI)" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>O que o wizard instala</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">O wizard pergunta nome do owner, timezone e agentes, e entao:</p>
+              <ul className="space-y-2 text-sm text-muted-foreground list-disc list-inside">
+                <li>Cria a estrutura de diretorios: <code className="bg-muted px-1 rounded">board/</code>, <code className="bg-muted px-1 rounded">sprints/</code>, <code className="bg-muted px-1 rounded">okrs/</code>, <code className="bg-muted px-1 rounded">logs/</code>, <code className="bg-muted px-1 rounded">projects/</code></li>
+                <li>Gera <code className="bg-muted px-1 rounded">config.yaml</code> preenchido com os dados informados</li>
+                <li>Copia <code className="bg-muted px-1 rounded">AGENTS.md</code>, <code className="bg-muted px-1 rounded">CLAUDE.md</code> e <code className="bg-muted px-1 rounded">CODEX.md</code></li>
+                <li>Clona o repositorio do dashboard, faz build standalone</li>
+                <li>Cria os servicos systemd: <code className="bg-muted px-1 rounded">kb-dashboard</code> e <code className="bg-muted px-1 rounded">kb-dashboard-ws</code></li>
+                <li>Inicializa repositorio git</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Requisitos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                <CommandRow cmd="Node.js >= 18" desc="Necessario para o npx e o dashboard" />
+                <CommandRow cmd="git >= 2.20" desc="Controle de versao do board" />
+                <CommandRow cmd="systemd (Linux)" desc="Para os servicos kb-dashboard e kb-dashboard-ws" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Apos a instalacao</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                <li>Entre no diretorio criado: <code className="bg-muted px-1 rounded">cd meu-projeto</code></li>
+                <li>Inicie os servicos: <code className="bg-muted px-1 rounded">systemctl --user start kb-dashboard kb-dashboard-ws</code></li>
+                <li>Acesse o dashboard em <code className="bg-muted px-1 rounded">http://localhost:8765</code></li>
+                <li>Configure seus agentes em <code className="bg-muted px-1 rounded">config.yaml</code> e registre como servicos systemd</li>
+              </ol>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Inicio Rapido */}
         <TabsContent value="quickstart" className="space-y-4 mt-4">
@@ -85,6 +150,24 @@ export default function HelpPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
+                <Server className="h-5 w-5" /> Dashboard
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                O dashboard roda em dois servicos: <Badge variant="outline">kb-dashboard</Badge> (Next.js, porta 8765) e <Badge variant="outline">kb-dashboard-ws</Badge> (WebSocket, porta 8766).
+              </p>
+              <CommandRow cmd="systemctl --user start kb-dashboard kb-dashboard-ws" desc="Inicia o dashboard e o WebSocket server" />
+              <CommandRow cmd="systemctl --user stop kb-dashboard kb-dashboard-ws" desc="Para o dashboard e o WebSocket server" />
+              <CommandRow cmd="systemctl --user restart kb-dashboard" desc="Reinicia o dashboard (ex: apos rebuild)" />
+              <CommandRow cmd="systemctl --user status kb-dashboard" desc="Verifica status do dashboard" />
+              <CommandRow cmd="journalctl --user -u kb-dashboard -f" desc="Acompanha logs do dashboard em tempo real" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
                 <Eye className="h-5 w-5" /> Verificar status
               </CardTitle>
             </CardHeader>
@@ -92,6 +175,7 @@ export default function HelpPage() {
               <CommandRow cmd="scripts/kb.sh status" desc="Mostra resumo do board e tasks ativas" />
               <CommandRow cmd="journalctl --user -u kb-claude-code -f" desc="Acompanha logs do claude-code em tempo real" />
               <CommandRow cmd="journalctl --user -u kb-codex -f" desc="Acompanha logs do codex em tempo real" />
+              <CommandRow cmd="journalctl --user -u kb-dashboard-ws -f" desc="Acompanha logs do WebSocket server em tempo real" />
             </CardContent>
           </Card>
         </TabsContent>
@@ -371,7 +455,26 @@ priority: high
         <TabsContent value="systemd" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Servicos systemd</CardTitle>
+              <CardTitle>Servicos do dashboard</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                O dashboard roda em dois servicos systemd do usuario. Os arquivos de unit ficam em <code className="bg-muted px-1 rounded">~/.config/systemd/user/</code>.
+              </p>
+              <CommandRow cmd="systemctl --user status kb-dashboard" desc="Status do dashboard Next.js (porta 8765)" />
+              <CommandRow cmd="systemctl --user status kb-dashboard-ws" desc="Status do WebSocket server (porta 8766)" />
+              <CommandRow cmd="systemctl --user start kb-dashboard kb-dashboard-ws" desc="Inicia ambos os servicos do dashboard" />
+              <CommandRow cmd="systemctl --user stop kb-dashboard kb-dashboard-ws" desc="Para ambos os servicos do dashboard" />
+              <CommandRow cmd="systemctl --user restart kb-dashboard" desc="Reinicia o dashboard (ex: apos rebuild)" />
+              <CommandRow cmd="systemctl --user enable kb-dashboard kb-dashboard-ws" desc="Habilita auto-start no login do usuario" />
+              <CommandRow cmd="journalctl --user -u kb-dashboard -f" desc="Logs do dashboard em tempo real" />
+              <CommandRow cmd="journalctl --user -u kb-dashboard-ws -f" desc="Logs do WebSocket server em tempo real" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Servicos dos agentes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
@@ -380,7 +483,7 @@ priority: high
               <CommandRow cmd="systemctl --user status kb-claude-code" desc="Status do servico claude-code" />
               <CommandRow cmd="systemctl --user status kb-codex" desc="Status do servico codex" />
               <CommandRow cmd="systemctl --user restart kb-claude-code" desc="Reinicia claude-code" />
-              <CommandRow cmd="journalctl --user -u kb-claude-code -f" desc="Logs do systemd em tempo real" />
+              <CommandRow cmd="journalctl --user -u kb-claude-code -f" desc="Logs do claude-code em tempo real" />
             </CardContent>
           </Card>
 
@@ -403,6 +506,8 @@ priority: high
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm text-muted-foreground list-disc list-inside">
+                <li>Dashboard nao abre: verificar <code className="bg-muted px-1 rounded">journalctl --user -u kb-dashboard</code> e confirmar porta 8765 livre.</li>
+                <li>Sem atualizacoes em tempo real: verificar <code className="bg-muted px-1 rounded">journalctl --user -u kb-dashboard-ws</code> e confirmar porta 8766 livre.</li>
                 <li>Agente nao inicia: verificar <code className="bg-muted px-1 rounded">journalctl --user -u kb-claude-code</code> para erros.</li>
                 <li>Agente trava: o watchdog deve reiniciar automaticamente. Verificar logs em <code className="bg-muted px-1 rounded">logs/</code>.</li>
                 <li>Task presa em in-progress: verificar se ha branch ativa com <code className="bg-muted px-1 rounded">git branch -a | grep task/</code>.</li>
