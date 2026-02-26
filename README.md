@@ -1,5 +1,9 @@
 # Kanbania
 
+<p align="center">
+  <img src="docs/logo.png" alt="Kanbania" width="180"/>
+</p>
+
 > AI-native kanban system — file-based, Git-versioned, multi-agent ready.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
