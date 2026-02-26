@@ -131,7 +131,7 @@ export function AgentStatusBar({ project }: AgentStatusBarProps) {
       if (
         msg.area === "board" ||
         msg.area === "logs" ||
-        (msg.path.includes("agents/") && msg.path.endsWith(".status.json"))
+        msg.area === "agents"
       ) {
         refetch();
       }
