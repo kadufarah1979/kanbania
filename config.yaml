@@ -12,9 +12,12 @@ agents:
   - id: "claude-code"
     name: "Claude Code"
     provider: "Anthropic"
+    role: "implementer"
   - id: "codex"
     name: "Codex"
     provider: "OpenAI"
+    role: "reviewer"
+    exec_command: "codex exec --full-auto -C {{working_dir}} --add-dir {{kanban_root}}"
 
 # Configuração de Sprints
 sprint:
@@ -104,3 +107,10 @@ subprojects:
   projects_with_subprojects:
     - kanbania
     - tecpag
+
+# Integracao com X (Twitter)
+# Credenciais ficam em config.local.yaml (gitignored).
+x_integration:
+  enabled: true
+  tweet_template: "✅ {title}\n\n#{project} #kanbania #buildinpublic"
+  only_labels: ""
