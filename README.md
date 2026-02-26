@@ -7,10 +7,19 @@
 > AI-native kanban system — file-based, Git-versioned, multi-agent ready.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![bash](https://img.shields.io/badge/shell-bash%204.4%2B-blue)](scripts/)
+[![npm](https://img.shields.io/npm/v/create-kanbania?color=cb3837&label=npm)](https://www.npmjs.com/package/create-kanbania)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/dashboard-Next.js%2014-black)](dashboard/)
 
 Kanbania is a project management system designed to work alongside AI agents (Claude Code, Codex, Gemini, or any CLI-invokable AI). Board state lives in plain Markdown files committed to Git. Configuration is a single `config.yaml` — no database, no SaaS, no vendor lock-in.
+
+## Install
+
+```bash
+npx create-kanbania my-project
+```
+
+That's it. The wizard sets up your workspace, installs the dashboard, and configures systemd services — all in one command.
 
 ![Kanbania Dashboard](docs/screenshots/01-home-dark.png)
 
@@ -27,21 +36,15 @@ Kanbania is a project management system designed to work alongside AI agents (Cl
 ## Quickstart
 
 ```bash
-git clone https://github.com/kanbania/kanbania.git
-cd kanbania
-./setup.sh --quick
+npx create-kanbania my-project
+cd my-project
 ```
 
-This creates `config.yaml`, `config.local.yaml`, and the `board/` directory structure.
+The interactive wizard will ask for your name, timezone, and which agents to use. Optionally installs the dashboard and sets up systemd services so everything starts automatically on login.
 
-## Setup Modes
-
+**Non-interactive (CI/defaults):**
 ```bash
-./setup.sh              # Interactive (asks quick vs detailed)
-./setup.sh --quick      # Non-interactive with sensible defaults
-./setup.sh --detailed   # Full interactive: agents, columns, notifications
-./setup.sh --upgrade    # Add new schema keys to existing config (non-destructive)
-./setup.sh --from-config  # Recreate board/ from existing config.yaml
+npx create-kanbania my-project --yes
 ```
 
 ## How It Works
