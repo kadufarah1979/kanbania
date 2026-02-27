@@ -1,0 +1,63 @@
+# Estrutura de fases e secoes do relatorio de analise de infra
+
+phases:
+  - id: inventario
+    task_suffix: 0
+    title: "Inventario de Recursos AWS"
+    story_points: 1
+    labels: [infra, research]
+    sections:
+      - "Instancias EC2"
+      - "Load Balancers (ALB/NLB)"
+      - "Volumes EBS"
+      - "Bancos de Dados RDS"
+      - "Recursos Orfaos"
+      - "Comparativo Terraform vs AWS"
+
+  - id: cloudwatch
+    task_suffix: 1
+    title: "Coleta de Metricas CloudWatch"
+    story_points: 2
+    labels: [infra, devops]
+    sections:
+      - "Metricas EC2 (CPU, Rede, Creditos)"
+      - "Metricas ALB (Latencia, Erros, Requests)"
+      - "Metricas EBS (Queue Length, Latencia)"
+      - "Metricas RDS (CPU, Memoria, I/O)"
+      - "Periodo de Analise"
+
+  - id: ssm
+    task_suffix: 2
+    title: "Diagnostico via SSM"
+    story_points: 2
+    labels: [infra, devops]
+    sections:
+      - "Estado do Sistema (CPU, Memoria, Disco)"
+      - "Processos em Execucao"
+      - "MongoDB: db.stats() e serverStatus"
+      - "MongoDB: Colecoes e Indices"
+      - "Docker: containers e uso de recursos"
+
+  - id: analise
+    task_suffix: 3
+    title: "Analise e Relatorio Consolidado"
+    story_points: 2
+    labels: [infra, docs]
+    sections:
+      - "Resumo Executivo"
+      - "Anomalias Detectadas"
+      - "Ranking por Severidade"
+      - "Recomendacoes"
+      - "Proximos Passos"
+
+  - id: pdf
+    task_suffix: 4
+    title: "Geracao do PDF Final"
+    story_points: 1
+    labels: [docs]
+    sections: []
+
+report:
+  footer: "Documento gerado pelo departamento de DevOps da Amazonas Inovare"
+  output_dir_pattern: "docs/analise-{env}-{date}"
+  pdf_name: "relatorio-completo.pdf"

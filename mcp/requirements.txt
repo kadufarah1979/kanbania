@@ -1,0 +1,4 @@
+mcp>=1.0.0
+boto3>=1.34.0
+pyyaml>=6.0
+weasyprint>=68.0

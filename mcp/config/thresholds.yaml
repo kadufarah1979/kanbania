@@ -1,0 +1,48 @@
+# Thresholds de alerta por metrica e tipo de recurso
+# Severidades: critical > high > medium > low
+
+ec2:
+  cpu_avg_warning: 50
+  cpu_avg_critical: 70
+  cpu_max_critical: 80
+  credit_balance_min: 50        # para instancias burstable (t-series)
+  network_in_mb_warning: 500
+  network_out_mb_warning: 500
+
+alb:
+  response_time_warning_s: 1.0
+  response_time_critical_s: 5.0
+  error_5xx_warning: 10
+  error_5xx_critical: 100
+  error_4xx_warning: 500
+
+nlb:
+  active_connections_warning: 10000
+  active_connections_critical: 50000
+  unhealthy_targets_critical: 1
+
+ebs:
+  queue_length_warning: 0.5
+  queue_length_critical: 1.0
+  read_latency_warning_s: 5.0
+  read_latency_critical_s: 30.0
+  write_latency_warning_s: 5.0
+  write_latency_critical_s: 30.0
+  burst_balance_min: 30         # para volumes gp2
+
+rds:
+  cpu_avg_warning: 60
+  cpu_avg_critical: 80
+  freeable_memory_mb_min: 500
+  read_latency_ms_warning: 20
+  write_latency_ms_warning: 20
+
+mongodb:
+  working_set_cache_ratio_warning: 0.80   # working set / wiredtiger cache
+  working_set_cache_ratio_critical: 0.95
+  replication_lag_s_warning: 10
+  replication_lag_s_critical: 60
+  connections_warning: 500
+  connections_critical: 1000
+  page_faults_per_min_warning: 100
+  page_faults_per_min_critical: 500

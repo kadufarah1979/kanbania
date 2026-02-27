@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Rocket, Terminal, GitBranch, Server, FolderTree,
   Play, Square, Eye, ArrowRight, Shield, Bot, Layers, PackageOpen,
+  Plug, ListOrdered, Settings2, FileText,
 } from "lucide-react";
 
 function CommandRow({ cmd, desc }: { cmd: string; desc: string }) {
@@ -51,6 +52,9 @@ export default function HelpPage() {
           </TabsTrigger>
           <TabsTrigger value="structure" className="gap-1.5">
             <FolderTree className="h-4 w-4" /> Estrutura
+          </TabsTrigger>
+          <TabsTrigger value="mcp" className="gap-1.5">
+            <Plug className="h-4 w-4" /> MCP Servers
           </TabsTrigger>
         </TabsList>
 
@@ -587,6 +591,195 @@ priority: high
             </CardContent>
           </Card>
         </TabsContent>
+        {/* MCP Servers */}
+        <TabsContent value="mcp" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plug className="h-5 w-5" /> infra-analyzer
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                MCP Server para automacao do fluxo completo de analise de infraestrutura AWS: inventario de recursos, coleta de metricas CloudWatch, diagnostico remoto via SSM, deteccao de anomalias e geracao de relatorio PDF. Integrado ao kanbania — cria tasks, move cards e registra activity.jsonl automaticamente.
+              </p>
+              <div className="space-y-1">
+                <CommandRow cmd="python3 kanbania-fresh/mcp/server.py" desc="Inicia o servidor MCP manualmente (teste)" />
+                <CommandRow cmd="pip install mcp pyyaml boto3 weasyprint" desc="Instala dependencias do servidor" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuracao no Claude Code</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Adicionar ao <code className="bg-muted px-1 rounded">~/.claude.json</code> na chave <code className="bg-muted px-1 rounded">mcpServers</code>:
+              </p>
+              <pre className="text-sm font-mono bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre">
+{`{
+  "mcpServers": {
+    "infra-analyzer": {
+      "command": "python3",
+      "args": ["~/kanbania-fresh/mcp/server.py"],
+      "env": {
+        "KANBANIA_PATH": "~/kanbania-fresh",
+        "PDF_TEMPLATE_PATH": "~/Projects/IaC/Innovaq/docs/templates/pdf_report.py"
+      }
+    }
+  }
+}`}
+              </pre>
+              <p className="text-sm text-muted-foreground">
+                Apos adicionar, reiniciar a sessao do Claude Code para as tools ficarem disponiveis.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ListOrdered className="h-5 w-5" /> Fluxo de execucao
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                As tools sao executadas em sequencia. Cada uma reclama e conclui automaticamente a task correspondente no kanbania.
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant="secondary">start_infra_analysis</Badge>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <Badge variant="secondary">aws_inventory</Badge>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <Badge variant="secondary">cloudwatch_metrics</Badge>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <Badge variant="secondary">ssm_diagnose</Badge>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <Badge variant="secondary">analyze_and_report</Badge>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <Badge variant="outline">generate_pdf_report</Badge>
+              </div>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p><strong>start_infra_analysis:</strong> Configura a sprint (ativa ou nova) e cria 5 tasks encadeadas no kanbania com <code className="bg-muted px-1 rounded">depends_on</code>. Retorna <code className="bg-muted px-1 rounded">task_ids</code> e <code className="bg-muted px-1 rounded">docs_dir</code>.</p>
+                <p><strong>aws_inventory:</strong> Lista EC2, ALB/NLB, EBS e RDS. Compara com Terraform se <code className="bg-muted px-1 rounded">repo_path</code> fornecido. Salva <code className="bg-muted px-1 rounded">inventario.md</code>.</p>
+                <p><strong>cloudwatch_metrics:</strong> Coleta metricas dos ultimos 14 dias (CPU, latencia, queue, erros). Salva <code className="bg-muted px-1 rounded">metricas-cloudwatch.md</code>.</p>
+                <p><strong>ssm_diagnose:</strong> Executa comandos remotos via SSM: sistema, MongoDB (wiredtiger, colecoes) e Docker. Salva <code className="bg-muted px-1 rounded">diagnostico-ssm.md</code>.</p>
+                <p><strong>analyze_and_report:</strong> Detecta anomalias via <code className="bg-muted px-1 rounded">thresholds.yaml</code>, rankeia por severidade e salva <code className="bg-muted px-1 rounded">analise-consolidada.md</code>.</p>
+                <p><strong>generate_pdf_report:</strong> Gera o PDF final com todas as fases usando o template padrao INNOVAQ.</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Exemplo de uso</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">Invocar no Claude Code:</p>
+              <pre className="text-sm font-mono bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre">
+{`start_infra_analysis(
+  project="innovaq",
+  aws_profile="INNOVAQ-PRD",
+  region="us-east-1",
+  environment="prd",
+  use_active_sprint=True,
+)
+
+# Retorna: sprint_id, task_ids, docs_dir, next_step
+# Em seguida, executar cada tool na ordem com os IDs retornados`}
+              </pre>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" /> Integracao com kanbania
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Cada tool cria, reclama e conclui sua task automaticamente:
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground list-disc list-inside">
+                <li>5 tasks criadas no <code className="bg-muted px-1 rounded">backlog/</code> com <code className="bg-muted px-1 rounded">depends_on</code> encadeados (N+1 bloqueia N+0, etc.).</li>
+                <li>Ao iniciar: task movida para <code className="bg-muted px-1 rounded">in-progress/</code> com <code className="bg-muted px-1 rounded">assigned_to: claude-code</code>.</li>
+                <li>Ao concluir: task movida para <code className="bg-muted px-1 rounded">done/</code> (auto-approve — 1-2 SP, labels docs/infra).</li>
+                <li>Cada operacao registrada em <code className="bg-muted px-1 rounded">logs/activity.jsonl</code>.</li>
+                <li>Projeto e sprint respeitam as regras de <code className="bg-muted px-1 rounded">resolve_board()</code> do AGENTS.md.</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings2 className="h-5 w-5" /> Thresholds de alerta
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Configurar em <code className="bg-muted px-1 rounded">mcp/config/thresholds.yaml</code>:
+              </p>
+              <div className="space-y-1">
+                <CommandRow cmd="ec2.cpu_avg_warning: 50" desc="% CPU media para warning (EC2)" />
+                <CommandRow cmd="ec2.cpu_avg_critical: 70" desc="% CPU media para critico (EC2)" />
+                <CommandRow cmd="ec2.credit_balance_min: 50" desc="Creditos minimos para instancias T-series" />
+                <CommandRow cmd="alb.response_time_critical_s: 5.0" desc="Latencia critica no ALB (segundos)" />
+                <CommandRow cmd="alb.error_5xx_critical: 100" desc="Erros 5XX/h para critico (ALB)" />
+                <CommandRow cmd="ebs.queue_length_critical: 1.0" desc="Queue length critica no volume EBS" />
+                <CommandRow cmd="mongodb.working_set_cache_ratio_critical: 0.95" desc="Ratio working set / wiredtiger cache para critico" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" /> Arquivos gerados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Todos os arquivos sao salvos em <code className="bg-muted px-1 rounded">docs/analise-&#123;env&#125;-&#123;data&#125;/</code> dentro do repositorio do projeto:
+              </p>
+              <div className="space-y-1">
+                <CommandRow cmd="inventario.md" desc="Recursos EC2, ALB/NLB, EBS, RDS e comparativo Terraform" />
+                <CommandRow cmd="metricas-cloudwatch.md" desc="Metricas dos ultimos 14 dias por recurso" />
+                <CommandRow cmd="diagnostico-ssm.md" desc="Saida dos comandos remotos (sistema, MongoDB, Docker)" />
+                <CommandRow cmd="analise-consolidada.md" desc="Anomalias por severidade, recomendacoes, proximos passos" />
+                <CommandRow cmd="relatorio-completo.pdf" desc="PDF final com capa, todas as fases e separadores visuais" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Estrutura do servidor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <pre className="text-sm font-mono bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre">
+{`kanbania-fresh/mcp/
+├── server.py               # Entry point FastMCP (6 tools)
+├── requirements.txt        # mcp, boto3, pyyaml, weasyprint
+├── tools/
+│   ├── kanban.py           # Criar tasks, mover cards, activity.jsonl
+│   ├── aws_inventory.py    # EC2, ALB, EBS, RDS via boto3
+│   ├── cloudwatch.py       # Metricas CloudWatch
+│   ├── ssm.py              # Comandos via SSM Session Manager
+│   ├── analyzer.py         # Deteccao de anomalias por thresholds
+│   ├── report_builder.py   # Labels e listagem de arquivos por fase
+│   └── pdf_generator.py    # Wrapper do pdf_report.py
+└── config/
+    ├── thresholds.yaml     # Limites de alerta configuráveis
+    └── report_structure.yaml`}
+              </pre>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   );

@@ -372,6 +372,36 @@ OKR and Sprint rules are in `config.yaml`. OKR/sprint require owner approval.
 
 ---
 
+## 12. PDF Report Generation
+
+When asked to generate a PDF infrastructure report:
+
+- Use the template at `/home/carlosfarah/Projects/IaC/Innovaq/docs/templates/pdf_report.py`
+- Import and call `generate_pdf()` directly via Python
+- Always apply `apply_accents()` for correct Portuguese accentuation
+- Default footer: "Documento gerado pelo departamento de DevOps da Amazonas Inovare"
+- Layout: dark gradient cover, visual section dividers, dark-header tables, page numbering
+- Save the PDF to the active project's `docs/` directory, or wherever the user specifies
+
+```python
+import sys
+sys.path.insert(0, "/home/carlosfarah/Projects/IaC/Innovaq/docs/templates")
+from pdf_report import generate_pdf
+
+generate_pdf(
+    inputs=["path/to/file.md"],           # one or more .md files
+    output="path/to/report.pdf",
+    title="Report Title",
+    subtitle="Subtitle",
+    tasks="TASK-XXXX",
+    periodo="YYYY-MM-DD a YYYY-MM-DD",
+    ambiente="PRD",
+    phase_labels=["Phase 1 · TASK-XXXX"],  # optional, for multi-file reports
+)
+```
+
+---
+
 ## 11. Operational Efficiency
 
 1. Progressive discovery: specific paths before global search.
