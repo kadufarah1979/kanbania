@@ -39,6 +39,7 @@
 - Ao terminar implementacao: seguir AGENTS.md secao 4.4 (auto-approve ou codex review) e secao 4.6 (ciclo autonomo). Sem perguntar.
 - Se precisar rodar build/lint/test, rodar direto sem pedir permissao.
 - Codigo de implementacao: SEMPRE na branch `task/TASK-NNNN` (AGENTS.md secao 4.4.3). Board state em `main`.
+- Ao mover task para `review/`: OBRIGATORIO definir `review_requested_from: [codex]` no frontmatter. Sem isso o Codex nao detecta a task e o review nao acontece.
 - Isso vale para TODOS os projetos, inclusive kanbania. Se a task altera `dashboard/`, `scripts/`, `server.ts` ou qualquer arquivo de codigo, criar branch. Somente arquivos kanban puros (`board/`, `projects/*/subprojects/*/board/`, `sprints/`, `projects/*/subprojects/*/sprints/`, `logs/`, `AGENTS.md`) vao direto em main.
 - Ao criar branch para kanbania: `git branch task/TASK-NNNN` a partir de main, fazer commits de codigo na branch, e push.
 
