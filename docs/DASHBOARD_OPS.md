@@ -119,6 +119,80 @@ Nao usar:
 
 ---
 
+## Inicializacao automatica no boot (systemd)
+
+Para que o dashboard suba automaticamente sempre que a maquina inicializar, crie um servico systemd.
+
+### 1. Criar o arquivo de servico
+
+```bash
+sudo nano /etc/systemd/system/kanbania.service
+```
+
+Cole o conteudo abaixo (ajuste `User` e os caminhos conforme sua instalacao):
+
+```ini
+[Unit]
+Description=Kanbania Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=SEU_USUARIO
+WorkingDirectory=/caminho/para/kanbania/dashboard
+Environment=KANBAN_ROOT=/caminho/para/kanbania
+Environment=PORT=8765
+ExecStart=/usr/bin/node .next/standalone/server.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 2. Habilitar e iniciar o servico
+
+```bash
+# Recarregar configuracoes do systemd
+sudo systemctl daemon-reload
+
+# Habilitar para iniciar no boot
+sudo systemctl enable kanbania.service
+
+# Iniciar imediatamente (sem precisar reiniciar a maquina)
+sudo systemctl start kanbania.service
+```
+
+### 3. Verificar status
+
+```bash
+sudo systemctl status kanbania.service
+```
+
+### Comandos uteis
+
+```bash
+# Parar o servico
+sudo systemctl stop kanbania.service
+
+# Reiniciar o servico
+sudo systemctl restart kanbania.service
+
+# Ver logs em tempo real
+journalctl -u kanbania.service -f
+
+# Desabilitar inicializacao automatica
+sudo systemctl disable kanbania.service
+```
+
+> **Atencao:** O servico systemd substitui o `nohup` manual. Se o servico estiver ativo,
+> nao suba o processo manualmente — havera conflito de porta.
+> Antes de usar `nohup` direto, pare o servico: `sudo systemctl stop kanbania.service`
+
+---
+
 ## Depuracao
 
 ```bash
