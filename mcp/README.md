@@ -38,15 +38,16 @@ Adicionar ao `~/.claude.json`:
   "mcpServers": {
     "infra-analyzer": {
       "command": "python3",
-      "args": ["/home/carlosfarah/kanbania-fresh/mcp/server.py"],
+      "args": ["/caminho/para/kanbania/mcp/server.py"],
       "env": {
-        "KANBANIA_PATH": "/home/carlosfarah/kanbania-fresh",
-        "PDF_TEMPLATE_PATH": "/home/carlosfarah/Projects/IaC/Innovaq/docs/templates/pdf_report.py"
+        "KANBANIA_PATH": "/caminho/para/kanbania"
       }
     }
   }
 }
 ```
+
+`PDF_TEMPLATE_PATH` e opcional — por padrao usa `mcp/pdf_report.py` incluido no repositorio.
 
 ## Fluxo de Uso
 
@@ -54,8 +55,8 @@ Adicionar ao `~/.claude.json`:
 
 ```
 start_infra_analysis(
-    project="innovaq",
-    aws_profile="INNOVAQ-PRD",
+    project="meu-projeto",
+    aws_profile="MEU-PROFILE",
     region="us-east-1",
     environment="prd",
     use_active_sprint=True,
@@ -68,8 +69,8 @@ Retorna: `sprint_id`, `task_ids` (5 tasks), `docs_dir`
 
 ```
 aws_inventory(
-    project="innovaq",
-    aws_profile="INNOVAQ-PRD",
+    project="meu-projeto",
+    aws_profile="MEU-PROFILE",
     region="us-east-1",
     environment="prd",
     docs_dir="docs/analise-prd-2026-02-27",
@@ -118,13 +119,13 @@ analyze_and_report(
 
 ```
 generate_pdf_report(
-    project="innovaq",
+    project="meu-projeto",
     environment="prd",
     docs_dir="docs/analise-prd-2026-02-27",
     task_id="TASK-0654",
     task_ids=["TASK-0650", "TASK-0651", "TASK-0652", "TASK-0653", "TASK-0654"],
     periodo="2026-02-13 a 2026-02-27",
-    aws_account="189958392649",
+    aws_account="123456789012",
     region="us-east-1",
 )
 ```
@@ -153,7 +154,7 @@ ebs:
 ## Profiles AWS
 
 O `aws_profile` deve existir em `~/.aws/credentials`.
-Profiles disponiveis no INNOVAQ: `INNOVAQ-PRD`, `IA-DEV`
+O profile deve existir em `~/.aws/credentials`
 
 ## Kanban
 

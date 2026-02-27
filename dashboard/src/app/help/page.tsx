@@ -623,10 +623,9 @@ priority: high
   "mcpServers": {
     "infra-analyzer": {
       "command": "python3",
-      "args": ["~/kanbania-fresh/mcp/server.py"],
+      "args": ["/caminho/para/kanbania/mcp/server.py"],
       "env": {
-        "KANBANIA_PATH": "~/kanbania-fresh",
-        "PDF_TEMPLATE_PATH": "~/Projects/IaC/Innovaq/docs/templates/pdf_report.py"
+        "KANBANIA_PATH": "/caminho/para/kanbania"
       }
     }
   }
@@ -680,14 +679,15 @@ priority: high
               <p className="text-sm text-muted-foreground">Invocar no Claude Code:</p>
               <pre className="text-sm font-mono bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre">
 {`start_infra_analysis(
-  project="innovaq",
-  aws_profile="INNOVAQ-PRD",
+  project="meu-projeto",
+  aws_profile="MEU-PROFILE",
   region="us-east-1",
   environment="prd",
   use_active_sprint=True,
 )
 
 # Retorna: sprint_id, task_ids, docs_dir, next_step
+# PDFs gerados em: kanbania/projects/<project>/docs/analise-<env>-<date>/
 # Em seguida, executar cada tool na ordem com os IDs retornados`}
               </pre>
             </CardContent>

@@ -1,18 +1,19 @@
 """
-pdf_generator.py — Wrapper do pdf_report.py do projeto INNOVAQ
+pdf_generator.py — Wrapper do pdf_report.py incluido no mcp/
 
 Reutiliza generate_pdf() e apply_accents() sem modificacoes.
-Localiza o template via env var PDF_TEMPLATE_PATH ou caminho padrao.
+Por padrao usa mcp/pdf_report.py (autocontido).
+Pode ser sobrescrito via env var PDF_TEMPLATE_PATH.
 """
 
 import os
 import sys
 from pathlib import Path
 
-PDF_TEMPLATE_PATH = os.environ.get(
-    "PDF_TEMPLATE_PATH",
-    "/home/carlosfarah/Projects/IaC/Innovaq/docs/templates/pdf_report.py",
-)
+# Padrao: pdf_report.py no mesmo diretorio pai (mcp/)
+_DEFAULT_PDF_TEMPLATE = str(Path(__file__).parent.parent / "pdf_report.py")
+
+PDF_TEMPLATE_PATH = os.environ.get("PDF_TEMPLATE_PATH", _DEFAULT_PDF_TEMPLATE)
 
 
 def _import_pdf_module():

@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PRIORITY_COLORS, COLUMN_HEADER_COLOR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { FolderOpen, GitBranch, Calendar } from "lucide-react";
+import { FolderOpen, GitBranch, Calendar, FileText } from "lucide-react";
 import { MarkdownContent } from "@/components/ui/markdown-content";
+import { ProjectDocs } from "@/components/projects/project-docs";
 import { format, parseISO } from "date-fns";
 
 interface ProjectDetailProps {
@@ -88,6 +89,16 @@ export function ProjectDetail({ project, tasks }: ProjectDetailProps) {
             <p className="text-sm text-muted-foreground py-4 text-center">No tasks for this project</p>
           )}
         </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          Documentos
+        </h3>
+        <ProjectDocs projectSlug={project.id} />
       </div>
 
       {project.content && (

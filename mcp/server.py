@@ -14,8 +14,8 @@ Tools registradas:
   - generate_pdf_report      : Gera PDF final com todas as fases
 
 Configuracao:
-  - KANBANIA_PATH            : Caminho para o kanbania-fresh (default: ~/kanbania-fresh)
-  - PDF_TEMPLATE_PATH        : Caminho para pdf_report.py (default: INNOVAQ templates)
+  - KANBANIA_PATH            : Caminho absoluto para o kanbania (obrigatorio)
+  - PDF_TEMPLATE_PATH        : Sobrescreve o template PDF (opcional — padrao: mcp/pdf_report.py)
 
 Uso:
   python3 server.py
@@ -25,10 +25,9 @@ Adicionar ao ~/.claude.json:
     "mcpServers": {
       "infra-analyzer": {
         "command": "python3",
-        "args": ["/home/carlosfarah/kanbania-fresh/mcp/server.py"],
+        "args": ["/caminho/para/kanbania/mcp/server.py"],
         "env": {
-          "KANBANIA_PATH": "/home/carlosfarah/kanbania-fresh",
-          "PDF_TEMPLATE_PATH": "/home/carlosfarah/Projects/IaC/Innovaq/docs/templates/pdf_report.py"
+          "KANBANIA_PATH": "/caminho/para/kanbania"
         }
       }
     }
@@ -204,9 +203,11 @@ def start_infra_analysis(
         )
         task_ids.append(tid)
 
-    # 4. Definir docs_dir
+    # 4. Definir docs_dir dentro do projeto no kanbania
     date_str = datetime.now(TZ_BR).strftime("%Y-%m-%d")
-    docs_dir = f"docs/analise-{environment}-{date_str}"
+    docs_dir = os.path.join(
+        KANBANIA_PATH, "projects", project, "docs", f"analise-{environment}-{date_str}"
+    )
 
     # 5. Log
     log_activity(
