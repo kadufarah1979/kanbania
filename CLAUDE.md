@@ -8,8 +8,8 @@
 
 ## Idioma e comunicacao
 
-- Toda comunicacao com o proprietario em portugues (pt-BR).
-- Commits, frontmatter e logs em portugues (sem acentos nos campos YAML).
+- Toda comunicacao com o proprietário em português (pt-BR) com acentuação correta.
+- Commits, frontmatter e logs em português sem acentos (limitação de ferramentas que não suportam UTF-8).
 - Nao pedir confirmacao para operacoes kanban rotineiras (claim, move, commit+push).
 - Nao perguntar "deseja que eu faca commit?" — se a tarefa esta concluida, fazer commit+push diretamente.
 
