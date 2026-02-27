@@ -43,7 +43,7 @@ curl -s -o /dev/null -w "Chunks: %{http_code}\n" \
 ## Como reiniciar apos build
 
 ```bash
-cd /home/carlosfarah/kanbania/dashboard
+cd /home/carlosfarah/kanbania-fresh/dashboard
 
 # 1. Garantir portas livres
 sudo fuser -k 8765/tcp 2>/dev/null || true
@@ -54,11 +54,11 @@ cp -r .next/static .next/standalone/.next/static
 cp -r public .next/standalone/public 2>/dev/null || true
 
 # 3. Subir Next.js standalone
-KANBAN_ROOT=/home/carlosfarah/kanbania PORT=8765 \
+KANBAN_ROOT=/home/carlosfarah/kanbania-fresh PORT=8765 \
   nohup node .next/standalone/server.js > /tmp/kanbania-next.log 2>&1 &
 
 # 4. Subir WebSocket server
-KANBAN_ROOT=/home/carlosfarah/kanbania WS_PORT=8766 \
+KANBAN_ROOT=/home/carlosfarah/kanbania-fresh WS_PORT=8766 \
   nohup npx tsx server.ts > /tmp/kanbania-ws.log 2>&1 &
 
 # 5. Verificar
@@ -76,7 +76,7 @@ tail -2 /tmp/kanbania-ws.log
 Sempre que houver mudanca em `dashboard/src/` ou `dashboard/server.ts`:
 
 ```bash
-cd /home/carlosfarah/kanbania/dashboard
+cd /home/carlosfarah/kanbania-fresh/dashboard
 
 # 1. Build (Next.js standalone)
 npm run build
@@ -88,9 +88,9 @@ cp -r public .next/standalone/public 2>/dev/null || true
 # 3. Parar e reiniciar servidores
 sudo fuser -k 8765/tcp 2>/dev/null || true
 sudo fuser -k 8766/tcp 2>/dev/null || true
-KANBAN_ROOT=/home/carlosfarah/kanbania PORT=8765 \
+KANBAN_ROOT=/home/carlosfarah/kanbania-fresh PORT=8765 \
   nohup node .next/standalone/server.js > /tmp/kanbania-next.log 2>&1 &
-KANBAN_ROOT=/home/carlosfarah/kanbania WS_PORT=8766 \
+KANBAN_ROOT=/home/carlosfarah/kanbania-fresh WS_PORT=8766 \
   nohup npx tsx server.ts > /tmp/kanbania-ws.log 2>&1 &
 ```
 
@@ -217,7 +217,7 @@ docker ps | grep dashboard
 
 | Variavel | Arquivo | Valor padrao | Descricao |
 |---|---|---|---|
-| `KANBAN_ROOT` | `.env.local` | `/home/carlosfarah/kanbania` | Raiz do repositorio kanban |
+| `KANBAN_ROOT` | `.env.local` | `/home/carlosfarah/kanbania-fresh` | Raiz do repositorio kanban |
 | `PORT` | env ao iniciar | `3000` | Porta do Next.js — definir como `8765` |
 | `WS_PORT` | env ao iniciar | `8766` | Porta do WebSocket server |
 | `NEXT_PUBLIC_WS_URL` | `.env.local` | auto-detect | URL do WS para o cliente (deixar vazio para auto) |

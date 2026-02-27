@@ -23,11 +23,11 @@
 - Apos qualquer build do dashboard: ver `docs/DASHBOARD_OPS.md` para reiniciar corretamente (standalone, nao `next start`).
 - Comando correto de restart (executar a partir de `dashboard/`):
   ```bash
-  cd /home/carlosfarah/kanbania/dashboard
+  cd /home/carlosfarah/kanbania-fresh/dashboard
   sudo fuser -k 8765/tcp 2>/dev/null || true
   cp -r .next/static .next/standalone/.next/static
   cp -r public .next/standalone/public 2>/dev/null || true
-  KANBAN_ROOT=/home/carlosfarah/kanbania PORT=8765 \
+  KANBAN_ROOT=/home/carlosfarah/kanbania-fresh PORT=8765 \
     nohup node .next/standalone/server.js > /tmp/kanbania-next.log 2>&1 &
   ```
 - Nunca subir o servidor sem `PORT=8765` — sem isso ele tenta porta 3000 e falha silenciosamente.
