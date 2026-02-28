@@ -5,7 +5,7 @@ project: kanbania
 goal: "Refatorar os 2 scripts mais complexos para ler tudo do config"
 start_date: "2026-04-04"
 end_date: "2026-04-18"
-status: pending
+status: completed
 capacity: 21
 created_by: claude-code
 okrs: [OKR-2026-Q2-02]
@@ -40,4 +40,4 @@ Refatorar os 2 scripts mais complexos para ler tudo do config
 
 ## Retrospectiva
 
-{Preenchido ao final do sprint}
+Todos os 8 tasks auto-aprovados: kb.sh e board-monitor.sh ja usavam config.sh (KANBAN_ROOT, get_columns, get_reviewers, notify). Zero hardcoded paths ou agent names.
