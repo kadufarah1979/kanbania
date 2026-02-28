@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useContext } from "react";
 import { WebSocketContext } from "@/components/providers/websocket-provider";
 import type { BoardData } from "../types";
 
-const empty: BoardData = { backlog: [], todo: [], "in-progress": [], review: [], done: [], archived: [] };
+const empty: BoardData = {};
 const FALLBACK_INTERVAL = 15_000;
 
 export function useBoard() {

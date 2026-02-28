@@ -34,7 +34,7 @@ export function GET() {
       .sort((a, b) => a.id.localeCompare(b.id));
 
     stats[project.id] = {
-      tasks: { backlog: 0, todo: 0, "in-progress": 0, review: 0, done: 0, archived: 0 },
+      tasks: {} as Record<BoardColumn, number>,
       totalPoints: 0,
       completedPoints: 0,
       okrs: projectOkrs.map((o) => ({
@@ -57,7 +57,7 @@ export function GET() {
 
   for (const task of tasks) {
     if (task.project && stats[task.project]) {
-      stats[task.project].tasks[task.status]++;
+      stats[task.project].tasks[task.status] = (stats[task.project].tasks[task.status] || 0) + 1;
       const pts = task.story_points || 0;
       stats[task.project].totalPoints += pts;
       if (task.status === "done" || task.status === "archived") {

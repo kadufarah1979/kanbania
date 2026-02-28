@@ -224,16 +224,10 @@ export function getAllTasks(): Task[] {
 
 export function getBoardData(): BoardData {
   const tasks = getAllTasks();
-  const board: BoardData = {
-    backlog: [],
-    todo: [],
-    "in-progress": [],
-    review: [],
-    done: [],
-    archived: [],
-  };
+  const board: BoardData = {};
 
   for (const task of tasks) {
+    if (!board[task.status]) board[task.status] = [];
     board[task.status].push(task);
   }
 
@@ -503,7 +497,7 @@ export function getStats(): Stats {
   const tasks = getAllTasks();
   const stats: Stats = {
     totalTasks: tasks.length,
-    byStatus: { backlog: 0, todo: 0, "in-progress": 0, review: 0, done: 0, archived: 0 },
+    byStatus: {} as Record<BoardColumn, number>,
     byPriority: { critical: 0, high: 0, medium: 0, low: 0 },
     byAgent: {},
     byProject: {},
@@ -513,7 +507,7 @@ export function getStats(): Stats {
   };
 
   for (const task of tasks) {
-    stats.byStatus[task.status]++;
+    stats.byStatus[task.status] = (stats.byStatus[task.status] || 0) + 1;
     stats.byPriority[task.priority]++;
 
     if (task.assigned_to) {

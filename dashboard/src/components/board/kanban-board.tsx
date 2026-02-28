@@ -54,10 +54,9 @@ export function KanbanBoard({ onWsStatus }: KanbanBoardProps) {
 
   // Apply filters
   const filteredData = useMemo(() => {
-    const result: BoardData = { backlog: [], todo: [], "in-progress": [], review: [], done: [], archived: [] };
-    for (const col of displayColumns.map((c) => c.id) as BoardColumnType[]) {
-      if (!result[col]) result[col] = [];
-    }
+    const result = Object.fromEntries(
+      displayColumns.map((c) => [c.id, [] as Task[]])
+    ) as BoardData;
     for (const col of Object.keys(data) as BoardColumnType[]) {
       result[col] = data[col].filter((t) => {
         if (filters.project && t.project !== filters.project) return false;
