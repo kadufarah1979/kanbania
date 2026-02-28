@@ -14,6 +14,7 @@ export default function ProjectsPage() {
 
   const handleWsMessage = useCallback(
     (msg: WSMessage) => {
+      if (msg.type !== "file-change") return;
       if (msg.area === "projects") refetch();
     },
     [refetch]

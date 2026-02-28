@@ -11,6 +11,7 @@ export default function ActivityPage() {
 
   const handleWsMessage = useCallback(
     (msg: WSMessage) => {
+      if (msg.type !== "file-change") return;
       if (msg.area === "logs") refetch();
     },
     [refetch]
