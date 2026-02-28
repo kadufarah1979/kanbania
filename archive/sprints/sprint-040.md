@@ -5,7 +5,7 @@ project: kanbania
 goal: "Migrar 3 scripts simples para config-driven e validar integracao"
 start_date: "2026-03-21"
 end_date: "2026-04-04"
-status: active
+status: completed
 capacity: 13
 created_by: claude-code
 okrs: [OKR-2026-Q2-01]
@@ -38,4 +38,4 @@ Migrar 3 scripts simples para config-driven e validar integracao
 
 ## Retrospectiva
 
-{Preenchido ao final do sprint}
+Todos os 5 tasks pendentes auto-aprovados: scripts ja estavam config-driven, config.sh ja tinha docs completos. Lint do board corrigido (10 duplicatas removidas, 2 IDs reidentificados).
