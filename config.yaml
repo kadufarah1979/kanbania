@@ -28,6 +28,32 @@ agents:
     wip_limit: 1
     exec_command: "codex exec --full-auto -C {{working_dir}} --add-dir {{kanban_root}}"
 
+# Workflow de transicoes e triggers
+workflow:
+  transitions:
+    - from: "backlog"
+      to: "todo"
+      allowed_roles: [implementer, reviewer]
+    - from: "todo"
+      to: "in-progress"
+      allowed_roles: [implementer]
+    - from: "in-progress"
+      to: "review"
+      allowed_roles: [implementer]
+    - from: "review"
+      to: "done"
+      allowed_roles: [reviewer]
+    - from: "review"
+      to: "in-progress"
+      allowed_roles: [reviewer]
+  triggers:
+    - on: "enter_review"
+      action: "exec_reviewer"
+      description: "Ao mover para review, notificar e acionar o agente reviewer"
+    - on: "reject"
+      action: "exec_implementer"
+      description: "Ao rejeitar (review->in-progress), notificar agente implementer para rework"
+
 # Configuração de Sprints
 sprint:
   duration_days: 14              # Duração padrão do sprint em dias
