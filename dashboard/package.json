@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"next dev\" \"npx ts-node --esm server.ts\"",
-    "build": "next build",
+    "build": "next build && npx esbuild server.ts --bundle --platform=node --outfile=dist/server.js --format=cjs",
     "start": "concurrently \"next start\" \"node dist/server.js\"",
     "lint": "next lint"
   },
