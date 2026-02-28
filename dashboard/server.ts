@@ -10,6 +10,9 @@ const KANBAN_ROOT = process.env.KANBAN_ROOT || "/home/carlosfarah/kanbania";
 const PORT = parseInt(process.env.WS_PORT || "8766", 10);
 const GITLAB_WEBHOOK_SECRET = process.env.GITLAB_WEBHOOK_SECRET || "";
 const SCRIPTS_DIR = path.join(KANBAN_ROOT, "scripts");
+const HOOKS_LOG = path.join(KANBAN_ROOT, "logs", "hooks-events.jsonl");
+const HOOKS_LOG_MAX_BYTES = 10 * 1024 * 1024;
+const HOOKS_LOG_KEEP_LINES = 500;
 
 // ── Deduplication: track processed pipeline IDs (TTL 1h) ───────────────────
 const processedPipelines = new Map<number, number>();
@@ -165,6 +168,42 @@ async function handleGitlabWebhook(req: http.IncomingMessage, res: http.ServerRe
   }
 }
 
+function rotateHooksLog() {
+  try {
+    const stat = fs.statSync(HOOKS_LOG);
+    if (stat.size < HOOKS_LOG_MAX_BYTES) return;
+    const lines = fs.readFileSync(HOOKS_LOG, "utf-8").split("\n").filter(Boolean);
+    const kept = lines.slice(-HOOKS_LOG_KEEP_LINES);
+    fs.writeFileSync(HOOKS_LOG, kept.join("\n") + "\n", "utf-8");
+    console.log(`[HOOKS] Log rotated — kept last ${kept.length} events`);
+  } catch {
+    // file may not exist yet
+  }
+}
+
+async function handleHookEvent(req: http.IncomingMessage, res: http.ServerResponse) {
+  try {
+    const body = await readBody(req);
+    const event = JSON.parse(body);
+
+    if (!event.hook_type || !event.agent_id) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "hook_type and agent_id are required" }));
+      return;
+    }
+
+    rotateHooksLog();
+    fs.appendFileSync(HOOKS_LOG, JSON.stringify(event) + "\n");
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+  } catch (err) {
+    console.error("[HOOKS] Error handling hook event:", err);
+    res.writeHead(500, { "Content-Type": "text/plain" });
+    res.end("Internal server error");
+  }
+}
+
 async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse) {
   const url = req.url || "/";
   const method = req.method || "GET";
@@ -174,9 +213,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
   }
 
   if (method === "POST" && url === "/events/hook") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok" }));
-    return;
+    return handleHookEvent(req, res);
   }
 
   res.writeHead(404, { "Content-Type": "text/plain" });
