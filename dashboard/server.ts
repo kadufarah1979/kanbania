@@ -344,26 +344,25 @@ function detectRework(filePath: string) {
 }
 
 // ── Auto-trigger reviewer (chokidar → review/) ───────────────────────────────
-const reviewTriggerTimers = new Map<string, ReturnType<typeof setTimeout>>();
+let reviewTriggerTimer: ReturnType<typeof setTimeout> | null = null;
 
-function triggerReview(taskId: string) {
+function triggerReview() {
   const triggerScript = path.join(SCRIPTS_DIR, "trigger-agent-review.sh");
   if (!fs.existsSync(triggerScript)) {
-    console.log(`[WS] Review trigger: script not found — skipping ${taskId}`);
+    console.log(`[WS] Review trigger: script not found — skipping`);
     return;
   }
-  console.log(`[WS] Review trigger: ${taskId}`);
-  execFile("bash", [triggerScript, taskId], {
+  console.log(`[WS] Review trigger: selecting highest-priority task from queue`);
+  execFile("bash", [triggerScript], {
     cwd: KANBAN_ROOT,
     timeout: 120_000,
     env: { ...process.env, PATH: process.env.PATH },
   }, (err, _stdout, stderr) => {
     if (err) {
-      console.error(`[WS] Review trigger failed for ${taskId}:`, stderr);
+      console.error(`[WS] Review trigger failed:`, stderr);
     } else {
-      console.log(`[WS] Review trigger complete: ${taskId}`);
+      console.log(`[WS] Review trigger complete`);
     }
-    reviewTriggerTimers.delete(taskId);
   });
 }
 
@@ -403,8 +402,8 @@ watcher.on("all", (event, filePath) => {
 
   // Auto-trigger reviewer when a card enters board/review/
   if (rel.startsWith("board/review/") && rel.endsWith(".md") && event === "add") {
-    const taskId = path.basename(rel, ".md");
-    setTimeout(() => triggerReview(taskId), 1000);
+    if (reviewTriggerTimer) clearTimeout(reviewTriggerTimer);
+    reviewTriggerTimer = setTimeout(() => { triggerReview(); reviewTriggerTimer = null; }, 1000);
   }
 });
 
