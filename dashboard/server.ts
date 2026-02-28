@@ -343,6 +343,30 @@ function detectRework(filePath: string) {
   }
 }
 
+// ── Auto-trigger reviewer (chokidar → review/) ───────────────────────────────
+const reviewTriggerTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function triggerReview(taskId: string) {
+  const triggerScript = path.join(SCRIPTS_DIR, "trigger-agent-review.sh");
+  if (!fs.existsSync(triggerScript)) {
+    console.log(`[WS] Review trigger: script not found — skipping ${taskId}`);
+    return;
+  }
+  console.log(`[WS] Review trigger: ${taskId}`);
+  execFile("bash", [triggerScript, taskId], {
+    cwd: KANBAN_ROOT,
+    timeout: 120_000,
+    env: { ...process.env, PATH: process.env.PATH },
+  }, (err, _stdout, stderr) => {
+    if (err) {
+      console.error(`[WS] Review trigger failed for ${taskId}:`, stderr);
+    } else {
+      console.log(`[WS] Review trigger complete: ${taskId}`);
+    }
+    reviewTriggerTimers.delete(taskId);
+  });
+}
+
 watcher.on("all", (event, filePath) => {
   const area = getArea(filePath);
   if (!area) return;
@@ -375,6 +399,12 @@ watcher.on("all", (event, filePath) => {
   // Detect codex rejection (card entering in-progress/ with rejected_qa)
   if (rel.startsWith("board/in-progress/") && rel.endsWith(".md") && event === "add") {
     setTimeout(() => detectRework(path.join(KANBAN_ROOT, rel)), 1000);
+  }
+
+  // Auto-trigger reviewer when a card enters board/review/
+  if (rel.startsWith("board/review/") && rel.endsWith(".md") && event === "add") {
+    const taskId = path.basename(rel, ".md");
+    setTimeout(() => triggerReview(taskId), 1000);
   }
 });
 
