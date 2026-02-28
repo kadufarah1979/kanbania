@@ -126,11 +126,23 @@ review_task() {
     SYSTEM_PROMPT=$(sed "s/{TASK_ID}/$task_id/g" "$prompt_file")
   fi
 
+  # Derive done/in-progress paths from the card file location
+  local review_dir
+  review_dir=$(dirname "$task_file")
+  local board_dir
+  board_dir=$(dirname "$review_dir")
+  local done_path="${board_dir}/done/${task_id}.md"
+  local inprogress_path="${board_dir}/in-progress/${task_id}.md"
+
   # Build prompt
   local PROMPT="QA $task_id (project: $project).
 
-Card file (canonical path — use this exact path for mv/edit): $task_file
-Kanban worktree: $wt_dir
+Card file (canonical path): $task_file
+MANDATORY after review — do ONE of these immediately, no confirmation needed:
+  APPROVED  → mv \"$task_file\" \"$done_path\" then update card acted_by + git add + git commit + git push
+  REJECTED  → mv \"$task_file\" \"$inprogress_path\" then update card acted_by (qa_changes_requested) + git add + git commit + git push
+
+Kanban root: ${KANBAN_ROOT}
 Project repo: ${project_repo}
 
 CARD:
