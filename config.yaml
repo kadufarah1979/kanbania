@@ -2,6 +2,11 @@
 # config.yaml — Configuração Global do Sistema Kanban
 # =============================================================================
 
+# Identificacao do sistema
+system:
+  name: "kanbania"
+  language: "pt-BR"
+
 # Proprietário do sistema
 owner:
   name: "kadufarah"
