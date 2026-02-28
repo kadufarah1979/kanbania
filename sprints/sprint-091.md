@@ -5,7 +5,7 @@ project: kanbania
 goal: "Entregar AgentSwimLane em tempo real no dashboard e solidificar base do config-driven"
 start_date: "2026-03-13"
 end_date: "2026-03-26"
-status: pending
+status: active
 capacity: 21
 created_by: claude-code
 okrs:

@@ -5,7 +5,7 @@ project: kanbania
 goal: "Ativar hooks Python de observabilidade e endpoint server.ts para captura de eventos em tempo real"
 start_date: "2026-02-27"
 end_date: "2026-03-12"
-status: active
+status: completed
 capacity: 21
 created_by: claude-code
 okrs:
