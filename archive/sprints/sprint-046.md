@@ -5,7 +5,7 @@ project: kanbania
 goal: "Criar setup.sh com modo quick e detailed, flags --from-config e --upgrade"
 start_date: "2026-06-13"
 end_date: "2026-06-27"
-status: pending
+status: completed
 capacity: 23
 created_by: claude-code
 okrs: [OKR-2026-Q2-04]
@@ -37,4 +37,4 @@ Criar setup.sh com modo quick e detailed, flags --from-config e --upgrade
 
 ## Retrospectiva
 
-{Preenchido ao final do sprint}
+setup.sh ja existe com 1008 linhas: quick mode, detailed mode, --from-config, --upgrade. TASK-0346..0350 auto-aprovados.
