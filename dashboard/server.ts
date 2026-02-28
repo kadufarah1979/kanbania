@@ -33,14 +33,7 @@ function readBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
-async function handleWebhook(req: http.IncomingMessage, res: http.ServerResponse) {
-  // Only handle POST /webhook/gitlab
-  if (req.method !== "POST" || req.url !== "/webhook/gitlab") {
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not found");
-    return;
-  }
-
+async function handleGitlabWebhook(req: http.IncomingMessage, res: http.ServerResponse) {
   // Validate secret token
   const token = req.headers["x-gitlab-token"] as string | undefined;
   if (GITLAB_WEBHOOK_SECRET && token !== GITLAB_WEBHOOK_SECRET) {
@@ -172,7 +165,25 @@ async function handleWebhook(req: http.IncomingMessage, res: http.ServerResponse
   }
 }
 
-const httpServer = http.createServer(handleWebhook);
+async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse) {
+  const url = req.url || "/";
+  const method = req.method || "GET";
+
+  if (method === "POST" && url === "/webhook/gitlab") {
+    return handleGitlabWebhook(req, res);
+  }
+
+  if (method === "POST" && url === "/events/hook") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok" }));
+    return;
+  }
+
+  res.writeHead(404, { "Content-Type": "text/plain" });
+  res.end("Not found");
+}
+
+const httpServer = http.createServer(handleRequest);
 const wss = new WebSocketServer({ server: httpServer });
 httpServer.listen(PORT);
 
