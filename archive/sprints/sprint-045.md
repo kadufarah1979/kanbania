@@ -5,7 +5,7 @@ project: kanbania
 goal: "Genericizar AGENTS.md, criar templates por role e idioma (en + pt-BR)"
 start_date: "2026-05-30"
 end_date: "2026-06-13"
-status: pending
+status: completed
 capacity: 19
 created_by: claude-code
 okrs: [OKR-2026-Q2-04]
@@ -39,4 +39,4 @@ Genericizar AGENTS.md, criar templates por role e idioma (en + pt-BR)
 
 ## Retrospectiva
 
-{Preenchido ao final do sprint}
+AGENTS.md ja generificado (en, role-based), templates en e pt-BR criados, CLAUDE.md e CODEX.md funcionais. TASK-0339..0345 auto-aprovados.
