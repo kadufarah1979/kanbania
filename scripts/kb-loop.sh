@@ -73,9 +73,9 @@ find_task() {
         done
     fi
 
-    # Reviewers and both: claim from review
+    # Reviewers and both: claim from review (search all board/review/ dirs)
     if [[ "$AGENT_ROLE" == "reviewer" || "$AGENT_ROLE" == "both" ]]; then
-        for f in "$BOARD_DIR/review"/*.md; do
+        while IFS= read -r f; do
             [ -f "$f" ] || continue
             grep -q "review_requested_from:.*${AGENT}" "$f" || continue
             # Skip already actioned
@@ -83,7 +83,7 @@ find_task() {
             grep -q 'action: *qa_changes_requested' "$f" && continue
             basename "$f" .md
             return 0
-        done
+        done < <(find "$KANBAN_ROOT" -path "*/board/review/*.md" 2>/dev/null | sort)
     fi
 
     return 1
@@ -96,7 +96,7 @@ find_task() {
 run_task() {
     local task_id="$1"
     local task_file
-    task_file=$(find "$BOARD_DIR" -name "$task_id.md" | head -1)
+    task_file=$(find "$KANBAN_ROOT" -name "$task_id.md" -path "*/board/*" | head -1)
     [ -f "$task_file" ] || return 1
 
     local title

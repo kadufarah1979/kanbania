@@ -61,10 +61,11 @@ invoke_reviewer() {
 
 review_task() {
   local task_id="$1"
-  local task_file="$BOARD_DIR/review/$task_id.md"
+  local task_file
+  task_file=$(find "$KANBAN_ROOT" -name "$task_id.md" -path "*/board/review/*" | head -1)
 
   if [ ! -f "$task_file" ]; then
-    echo "[$(date -Iseconds)] ERROR: $task_file not found"
+    echo "[$(date -Iseconds)] ERROR: $task_id.md not found in any board/review/"
     return 1
   fi
 
@@ -160,7 +161,7 @@ if [ $# -gt 0 ]; then
 else
   found=false
   sortable=()
-  for f in "$BOARD_DIR/review"/*.md; do
+  while IFS= read -r f; do
     [ -f "$f" ] || continue
     has_reviewer_pending "$f" || continue
     task_id=$(basename "$f" .md)
@@ -174,7 +175,7 @@ else
     esac
     num="${task_id#TASK-}"
     sortable+=("$(printf '%d|%08d|%s' "$rank" "$((10#$num))" "$task_id")")
-  done
+  done < <(find "$KANBAN_ROOT" -path "*/board/review/*.md" 2>/dev/null | sort)
   if [ "${#sortable[@]}" -gt 0 ]; then
     top=$(printf '%s\n' "${sortable[@]}" | sort -t'|' -k1,1n -k2,2n | head -1)
     task_id="${top##*|}"
