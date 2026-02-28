@@ -159,14 +159,28 @@ if [ $# -gt 0 ]; then
   review_task "$1"
 else
   found=false
+  sortable=()
   for f in "$BOARD_DIR/review"/*.md; do
     [ -f "$f" ] || continue
     has_reviewer_pending "$f" || continue
     task_id=$(basename "$f" .md)
+    pri=$(grep '^priority:' "$f" | head -1 | sed 's/^priority:\s*//' | tr -d '"' | tr -d ' ')
+    case "${pri:-medium}" in
+      critical) rank=0 ;;
+      high)     rank=1 ;;
+      medium)   rank=2 ;;
+      low)      rank=3 ;;
+      *)        rank=2 ;;
+    esac
+    num="${task_id#TASK-}"
+    sortable+=("$(printf '%d|%08d|%s' "$rank" "$((10#$num))" "$task_id")")
+  done
+  if [ "${#sortable[@]}" -gt 0 ]; then
+    top=$(printf '%s\n' "${sortable[@]}" | sort -t'|' -k1,1n -k2,2n | head -1)
+    task_id="${top##*|}"
     found=true
     review_task "$task_id"
-    break  # WIP 1: one task at a time
-  done
+  fi
   if ! $found; then
     echo "[$(date -Iseconds)] No tasks pending QA review"
   fi
