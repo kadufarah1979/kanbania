@@ -122,19 +122,20 @@ run_task() {
 
     log "executing $task_id: $title (project: $project, dir: $project_dir)"
 
+    # Reviewer: delegate fully to trigger-agent-review.sh
+    if [[ "$AGENT_ROLE" == "reviewer" ]]; then
+        "$SCRIPTS_DIR/trigger-agent-review.sh" "$task_id" 2>&1 || return 1
+        return 0
+    fi
+
     if [ -z "$AGENT_EXEC" ]; then
         log "ERROR: no exec_command configured for agent '$AGENT'"
         log "HINT: Add exec_command to config.yaml for agent '$AGENT'"
         return 1
     fi
 
-    # Generate prompt using trigger script if available
     local prompt
-    if [[ "$AGENT_ROLE" == "reviewer" ]]; then
-        prompt="$("$SCRIPTS_DIR/trigger-agent-review.sh" "$task_id" --dry-run 2>/dev/null || echo "Please review task $task_id")"
-    else
-        prompt="$(cat "$task_file")"
-    fi
+    prompt="$(cat "$task_file")"
 
     # Substitute placeholders in exec_command
     local cmd="${AGENT_EXEC}"
