@@ -195,6 +195,8 @@ async function handleHookEvent(req: http.IncomingMessage, res: http.ServerRespon
     rotateHooksLog();
     fs.appendFileSync(HOOKS_LOG, JSON.stringify(event) + "\n");
 
+    broadcast({ type: "hook-event", ...event });
+
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true }));
   } catch (err) {
