@@ -5,7 +5,7 @@ project: kanbania
 goal: "Migrar 3 scripts simples para config-driven e validar integracao"
 start_date: "2026-03-21"
 end_date: "2026-04-04"
-status: pending
+status: active
 capacity: 13
 created_by: claude-code
 okrs: [OKR-2026-Q2-01]
