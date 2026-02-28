@@ -81,7 +81,8 @@ find_task() {
             # Skip already actioned
             grep -q 'action: *qa_approved' "$f" && continue
             grep -q 'action: *qa_changes_requested' "$f" && continue
-            basename "$f" .md
+            # Return full path so run_task uses the correct file
+            echo "$f"
             return 0
         done < <(find "$KANBAN_ROOT" -path "*/board/review/*.md" 2>/dev/null | sort)
     fi
@@ -96,7 +97,14 @@ find_task() {
 run_task() {
     local task_id="$1"
     local task_file
-    task_file=$(find "$KANBAN_ROOT" -name "$task_id.md" -path "*/board/*" | head -1)
+
+    # Accept either a full path or a task ID
+    if [ -f "$task_id" ]; then
+        task_file="$task_id"
+        task_id=$(basename "$task_file" .md)
+    else
+        task_file=$(find "$KANBAN_ROOT" -name "$task_id.md" -path "*/board/*" | head -1)
+    fi
     [ -f "$task_file" ] || return 1
 
     local title
@@ -149,15 +157,22 @@ while true; do
     # Sync kanban
     git -C "${KANBAN_ROOT}" pull --rebase --quiet 2>/dev/null || true
 
-    # Find next task
-    task_id=""
-    task_id=$(find_task 2>/dev/null) || true
+    # Find next task (may return full path or task ID)
+    task_ref=""
+    task_ref=$(find_task 2>/dev/null) || true
 
     # No task found — idle
-    if [ -z "$task_id" ]; then
+    if [ -z "$task_ref" ]; then
         log "idle — no tasks found, sleeping ${SLEEP_IDLE}s"
         sleep "$SLEEP_IDLE"
         continue
+    fi
+
+    # Derive display task_id regardless of whether task_ref is a path or ID
+    if [ -f "$task_ref" ]; then
+        task_id=$(basename "$task_ref" .md)
+    else
+        task_id="$task_ref"
     fi
 
     # Heartbeat keeper — updates mtime every 60s during long execution
@@ -166,7 +181,7 @@ while true; do
     HEARTBEAT_PID=$!
 
     EXIT_CODE=0
-    run_task "$task_id" >> "$LOGFILE" 2>&1 || EXIT_CODE=$?
+    run_task "$task_ref" >> "$LOGFILE" 2>&1 || EXIT_CODE=$?
 
     kill "$HEARTBEAT_PID" 2>/dev/null || true
     wait "$HEARTBEAT_PID" 2>/dev/null || true
