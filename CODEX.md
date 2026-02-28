@@ -12,6 +12,12 @@
 - Commits, frontmatter e logs em português sem acentos (limitação de ferramentas que não suportam UTF-8).
 - Não pedir confirmação para operações kanban rotineiras (review, approve, reject, commit+push).
 
+## Hooks de observabilidade
+
+- Hooks Python em `.claude/hooks/` registrados em `.claude/settings.json`.
+- Capturam: PreToolUse, PostToolUse, SessionStart, SessionEnd, Stop.
+- Enviam eventos ao server.ts (porta 8766) — falha silenciosa.
+
 ## Workflow de review
 
 - Processar uma task por vez (WIP 1): completar o ciclo completo antes de pegar a próxima.

@@ -13,6 +13,12 @@
 - Nao pedir confirmacao para operacoes kanban rotineiras (claim, move, commit+push).
 - Nao perguntar "deseja que eu faca commit?" — se a tarefa esta concluida, fazer commit+push diretamente.
 
+## Hooks de observabilidade
+
+- Hooks Python em `.claude/hooks/`: `_shared.py`, `pre_tool_use.py`, `post_tool_use.py`, `session_start.py`, `session_end.py`, `stop.py`.
+- Registrados em `.claude/settings.json`. Enviam eventos ao server.ts (porta 8766) via POST `/events/hook`.
+- Falha silenciosa — nunca bloqueiam a execucao do agente.
+
 ## Decisoes tecnicas
 
 - Stack do dashboard: Next.js 14 (App Router), TypeScript, Tailwind CSS.
