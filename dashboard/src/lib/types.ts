@@ -56,15 +56,7 @@ export interface Task {
   tokens_by_phase: TokensByPhase | null;
 }
 
-export interface BoardData {
-  backlog: Task[];
-  todo: Task[];
-  "in-progress": Task[];
-  review: Task[];
-  done: Task[];
-  archived: Task[];
-  [column: string]: Task[];
-}
+export type BoardData = Record<string, Task[]>;
 
 export interface KeyResult {
   id: string;
