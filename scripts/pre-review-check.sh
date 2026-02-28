@@ -69,10 +69,16 @@ if ! $HAS_BACKEND && ! $HAS_FRONTEND; then
   if echo "$TITLE" | grep -qiE 'frontend|dashboard|component|page|sidebar|wizard|chart|tailwind|css'; then HAS_FRONTEND=true; fi
 fi
 
-# Fallback: run both
+# Fallback: run both — unless task is infra/config-only (no code scope detected)
 if ! $HAS_BACKEND && ! $HAS_FRONTEND; then
-  HAS_BACKEND=true
-  HAS_FRONTEND=true
+  LABELS_LINE=$(grep '^labels:' "$TASK_FILE" | head -1)
+  if echo "$LABELS_LINE" | grep -qiE '\b(infra|docs|research)\b' && \
+     ! echo "$LABELS_LINE" | grep -qiE '\b(backend|frontend|testing|feature|bug)\b'; then
+    : # infra/docs-only task — skip all gates
+  else
+    HAS_BACKEND=true
+    HAS_FRONTEND=true
+  fi
 fi
 
 echo "[pre-review] Scope: backend=$HAS_BACKEND frontend=$HAS_FRONTEND" >&2
@@ -105,16 +111,21 @@ if $HAS_BACKEND; then
     done
   fi
 
-  BACKEND_OUTPUT=""
-  BACKEND_EXIT=0
-  BACKEND_OUTPUT=$(cd "$PROJECT_DIR" && make test 2>&1) || BACKEND_EXIT=$?
-  BACKEND_SUMMARY=$(echo "$BACKEND_OUTPUT" | grep -E '(passed|failed|error)' | tail -1 || echo "no summary")
-
-  if [ $BACKEND_EXIT -eq 0 ]; then
-    RESULTS="${RESULTS}BACKEND: PASS — ${BACKEND_SUMMARY}\n"
+  # Skip if no Makefile or no 'test' target
+  if [ ! -f "$PROJECT_DIR/Makefile" ] || ! grep -q '^test[[:space:]]*:' "$PROJECT_DIR/Makefile" 2>/dev/null; then
+    RESULTS="${RESULTS}BACKEND: SKIP (no Makefile/test target)\n"
   else
-    RESULTS="${RESULTS}BACKEND: FAIL — ${BACKEND_SUMMARY}\n"
-    OVERALL_PASS=false
+    BACKEND_OUTPUT=""
+    BACKEND_EXIT=0
+    BACKEND_OUTPUT=$(cd "$PROJECT_DIR" && make test 2>&1) || BACKEND_EXIT=$?
+    BACKEND_SUMMARY=$(echo "$BACKEND_OUTPUT" | grep -E '(passed|failed|error)' | tail -1 || echo "no summary")
+
+    if [ $BACKEND_EXIT -eq 0 ]; then
+      RESULTS="${RESULTS}BACKEND: PASS — ${BACKEND_SUMMARY}\n"
+    else
+      RESULTS="${RESULTS}BACKEND: FAIL — ${BACKEND_SUMMARY}\n"
+      OVERALL_PASS=false
+    fi
   fi
 
   exec 9>&-
