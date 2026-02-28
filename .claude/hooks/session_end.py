@@ -11,12 +11,12 @@ from _shared import send_hook_event
 def main() -> None:
     ppid = os.getppid()
     session_file = f"/tmp/claude-session-{ppid}.id"
+    send_hook_event("SessionEnd", {})
+
     try:
         os.remove(session_file)
     except Exception:
         pass
-
-    send_hook_event("SessionEnd", {})
 
 
 if __name__ == "__main__":
