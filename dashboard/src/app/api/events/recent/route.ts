@@ -19,7 +19,10 @@ export async function GET() {
 
     const events = recent.flatMap((line) => {
       try {
-        return [JSON.parse(line)];
+        const e = JSON.parse(line);
+        // Descartar eventos malformados (sem campos obrigatorios)
+        if (!e.agent_id || !e.hook_type || !e.timestamp || !e.payload) return [];
+        return [e];
       } catch {
         return [];
       }

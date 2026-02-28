@@ -70,7 +70,8 @@ function formatTime(ts: string): string {
   });
 }
 
-function toolSummary(payload: Record<string, unknown>): string | null {
+function toolSummary(payload: Record<string, unknown> | undefined): string | null {
+  if (!payload) return null;
   const input = payload.tool_input as Record<string, unknown> | undefined;
   if (!input) return null;
 
