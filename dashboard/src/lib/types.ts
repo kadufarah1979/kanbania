@@ -159,3 +159,30 @@ export interface WSMessage {
   event: "add" | "change" | "unlink";
   area: "board" | "sprints" | "projects" | "logs" | "okrs" | "agents" | "config";
 }
+
+export type HookType =
+  | "PreToolUse"
+  | "PostToolUse"
+  | "SessionStart"
+  | "SessionEnd"
+  | "Stop"
+  | "Notification";
+
+export interface HookEvent {
+  agent_id: string;
+  session_id: string;
+  hook_type: HookType;
+  tool_name?: string;
+  timestamp: string;
+  payload: Record<string, unknown>;
+}
+
+export interface HitlRequest {
+  request_id: string;
+  agent_id: string;
+  session_id: string;
+  timestamp: string;
+  prompt: string;
+  context?: Record<string, unknown>;
+  expires_at?: string;
+}
