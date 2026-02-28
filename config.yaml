@@ -71,6 +71,32 @@ story_points:
   epic_threshold: 5              # >= 5 SP: obrigatoriamente decomposta em sub-tasks
   max_files_per_task: 5          # Task que altera > 5 arquivos: deve ser quebrada
 
+# Workflow de transicoes e triggers
+workflow:
+  transitions:
+    - from: "backlog"
+      to: "todo"
+      allowed_roles: [implementer, reviewer]
+    - from: "todo"
+      to: "in-progress"
+      allowed_roles: [implementer]
+    - from: "in-progress"
+      to: "review"
+      allowed_roles: [implementer]
+    - from: "review"
+      to: "done"
+      allowed_roles: [reviewer]
+    - from: "review"
+      to: "in-progress"
+      allowed_roles: [reviewer]
+  triggers:
+    - on: "enter_review"
+      action: "exec_reviewer"
+      description: "Ao mover para review, notificar e acionar o agente reviewer"
+    - on: "reject"
+      action: "exec_implementer"
+      description: "Ao rejeitar (review->in-progress), notificar agente implementer para rework"
+
 # Labels padrão disponíveis
 labels:
   - bug
