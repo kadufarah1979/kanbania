@@ -18,10 +18,14 @@ agents:
     name: "Claude Code"
     provider: "Anthropic"
     role: "implementer"
+    color: "#f97316"
+    wip_limit: 2
   - id: "codex"
     name: "Codex"
     provider: "OpenAI"
     role: "reviewer"
+    color: "#10b981"
+    wip_limit: 1
     exec_command: "codex exec --full-auto -C {{working_dir}} --add-dir {{kanban_root}}"
 
 # Configuração de Sprints
