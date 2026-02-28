@@ -2956,3 +2956,4 @@ timestamp:2026-02-22T21:52:13-03:00
 {"timestamp":"2026-02-27T12:00:00-03:00","agent":"claude-code","action":"created","entity_type":"task","entity_id":"TASK-0675","details":"Task criada via roadmap-plan","project":"kanbania"}
 {"timestamp":"2026-02-27T12:00:00-03:00","agent":"claude-code","action":"created","entity_type":"task","entity_id":"TASK-0676","details":"Task criada via roadmap-plan","project":"kanbania"}
 {"timestamp":"2026-02-27T12:00:00-03:00","agent":"claude-code","action":"created","entity_type":"task","entity_id":"TASK-0677","details":"Task criada via roadmap-plan","project":"kanbania"}
+{"timestamp":"2026-02-28T00:37:53-03:00","agent":"codex","action":"move","entity_type":"task","entity_id":"TASK-0290","details":"QA rejected: moved review -> in-progress because branch task/TASK-0290 contains unrelated changes outside task scope","project":"kanbania"}
