@@ -5,7 +5,7 @@ project: kanbania
 goal: "Grep zero, LICENSE, CONTRIBUTING, issue templates, teste e2e"
 start_date: "2026-06-27"
 end_date: "2026-07-11"
-status: pending
+status: completed
 capacity: 19
 created_by: claude-code
 okrs: [OKR-2026-Q2-04]
@@ -42,4 +42,4 @@ Grep zero, LICENSE, CONTRIBUTING, issue templates, teste e2e
 
 ## Retrospectiva
 
-{Preenchido ao final do sprint}
+LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, .github templates e README existem. setup.sh funciona. Zero refs hardcoded. TASK-0351..0360 auto-aprovados.
