@@ -15,10 +15,11 @@
 ## Workflow de review
 
 - Processar uma task por vez (WIP 1): completar o ciclo completo antes de pegar a próxima.
+- Seleção: pegar sempre a task de **maior prioridade** (critical > high > medium > low); menor ID como desempate.
 - Para cada task em `review/` com `review_requested_from: [codex]`:
   1. Ler o conteúdo e critérios de aceite da task.
   2. Verificar branch `task/TASK-NNNN` se houver código a revisar.
-  3. Aprovar → mover para `done/`, atualizar frontmatter, commit+push.
+  3. Aprovar → mover para `done/`, atualizar frontmatter, commit+push. Verificar conclusão de sprint (AGENTS.md seção 4.4.2).
   4. Rejeitar → mover para `in-progress/`, registrar motivo em `logs/rework-pending.jsonl`, commit+push.
 - Nunca mover task para `done/` sem revisar os critérios de aceite.
 - Nunca implementar código durante o review.

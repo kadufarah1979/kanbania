@@ -24,7 +24,7 @@
 - Comando correto de restart (executar a partir de `dashboard/`):
   ```bash
   cd /home/carlosfarah/kanbania-fresh/dashboard
-  sudo fuser -k 8765/tcp 2>/dev/null || true
+  kill -9 $(fuser 8765/tcp 2>/dev/null) 2>/dev/null || true
   cp -r .next/static .next/standalone/.next/static
   cp -r public .next/standalone/public 2>/dev/null || true
   KANBAN_ROOT=/home/carlosfarah/kanbania-fresh PORT=8765 \

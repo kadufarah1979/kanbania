@@ -64,6 +64,21 @@ Optional fields: `subproject`, `sprint`, `okr`, `labels`, `story_points`, `assig
 
 Forbidden fields: `points`, `status` (status is determined by folder location).
 
+### 3.1 Task Decomposition Rule
+
+When creating tasks (sprint planning or on-demand), the agent MUST evaluate size and scope before adding to the board:
+
+1. **Task >= `epic_threshold` SP (5)**: MUST be decomposed into sub-tasks before entering the sprint. Never create a task >= 5 SP without breaking it down.
+2. **Task >= `max_single_task` SP (3) that affects > 3 files**: MUST be decomposed.
+3. **Task that changes > `max_files_per_task` files (5)**: MUST be decomposed regardless of SP.
+4. **Scope analysis**: when estimating SP, mentally list affected files. If > 3 files, consider splitting. If > 5 files, splitting is mandatory.
+
+Sub-tasks must:
+- Reference `parent: TASK-NNNN` in frontmatter.
+- Use `depends_on`/`blocks` to express execution order.
+- Be independently deployable when possible.
+- Sum the same SP as the original task (or adjust if decomposition reveals different complexity).
+
 ### 3.2 Board Path Resolution
 
 Every operation accessing the board or sprint of a task MUST use these functions:
@@ -87,21 +102,6 @@ File: `projects/<proj>/subprojects/<sub>/README.md`
 Required fields: `id`, `parent`, `name`, `description`, `repo`, `status`, `created_at`, `created_by`.
 Optional fields: `tech_stack`, `okrs`.
 
-### 3.1 Task Decomposition Rule
-
-When creating tasks (sprint planning or on-demand), the agent MUST evaluate size and scope before adding to the board:
-
-1. **Task >= `epic_threshold` SP (5)**: MUST be decomposed into sub-tasks before entering the sprint. Never create a task >= 5 SP without breaking it down.
-2. **Task >= `max_single_task` SP (3) that affects > 3 files**: MUST be decomposed.
-3. **Task that changes > `max_files_per_task` files (5)**: MUST be decomposed regardless of SP.
-4. **Scope analysis**: when estimating SP, mentally list affected files. If > 3 files, consider splitting. If > 5 files, splitting is mandatory.
-
-Sub-tasks must:
-- Reference `parent: TASK-NNNN` in frontmatter.
-- Use `depends_on`/`blocks` to express execution order.
-- Be independently deployable when possible.
-- Sum the same SP as the original task (or adjust if decomposition reveals different complexity).
-
 ---
 
 ## 4. Canonical Flow
@@ -123,10 +123,6 @@ Exception: `review → in-progress` (rejected in QA by the reviewer agent).
 
 1. Verify task is unassigned and WIP < 2.
 2. Set `assigned_to`, move to `in-progress/`, record `acted_by` and `activity.jsonl`.
-
-### 4.3.1 Blocking Project Validation
-
-Before claim/move/execution: validate `project` + `subproject` in frontmatter against the current agent context. If either field differs from context, abort without modifying the board.
 
 ### 4.4 Implementation Completion (implementer role)
 
@@ -251,7 +247,7 @@ No step requires owner confirmation.
 
 ### 4.7 Agent project context
 
-The agent's context is determined by the working directory where it was started: `project` and, when applicable, `subproject`. Before claim or execution, compare both fields of the task against the current context. If either field does not match, ignore the task.
+The agent's context is determined by the working directory where it was started (`project` and, when applicable, `subproject`). Before claim/move/execution: compare both fields of the task against the current context. If either field differs from context, abort without modifying the board.
 
 ### 4.8 Priority batch distribution
 
@@ -328,11 +324,6 @@ Propose only when: requested by owner, start of quarter without OKR, or expired 
 
 OKR and Sprint rules are in `config.yaml`. OKR/sprint require owner approval.
 
-### 8.1 Worktree Policy per Sprint
-
-- Create dedicated worktree (`/tmp/<system-name>-sprint-NNN`) with dedicated branch per sprint.
-- Close sprint with procedure 7.1, merge/push and worktree removal.
-
 ---
 
 ## 9. External Projects
@@ -372,6 +363,17 @@ OKR and Sprint rules are in `config.yaml`. OKR/sprint require owner approval.
 
 ---
 
+## 11. Operational Efficiency
+
+1. Progressive discovery: specific paths before global search.
+2. Avoid high-verbosity commands without filters.
+3. Reuse already collected context.
+4. Prefer 2-3 small, targeted commands.
+5. Only open large artifacts when essential.
+6. Read `activity.jsonl` with `tail -20`, never the full file.
+
+---
+
 ## 12. PDF Report Generation
 
 When asked to generate a PDF infrastructure report:
@@ -399,14 +401,3 @@ generate_pdf(
     phase_labels=["Phase 1 · TASK-XXXX"],  # optional, for multi-file reports
 )
 ```
-
----
-
-## 11. Operational Efficiency
-
-1. Progressive discovery: specific paths before global search.
-2. Avoid high-verbosity commands without filters.
-3. Reuse already collected context.
-4. Prefer 2-3 small, targeted commands.
-5. Only open large artifacts when essential.
-6. Read `activity.jsonl` with `tail -20`, never the full file.
