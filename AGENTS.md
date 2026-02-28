@@ -381,7 +381,7 @@ When asked to generate a PDF infrastructure report:
 - Always apply `apply_accents()` for correct Portuguese accentuation
 - Default footer: "Documento gerado pelo departamento de DevOps da Amazonas Inovare"
 - Layout: dark gradient cover, visual section dividers, dark-header tables, page numbering
-- Save the PDF to the active project's `docs/` directory, or wherever the user specifies
+- Save the PDF to `<KANBANIA_PATH>/projects/<slug>/docs/` by default — this makes the document visible in the KanbanIA dashboard. Only save to a different path if the user explicitly requests it.
 
 ```python
 import sys

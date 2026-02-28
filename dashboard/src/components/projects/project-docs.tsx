@@ -56,7 +56,7 @@ export function ProjectDocs({ projectSlug }: ProjectDocsProps) {
 
   return (
     <div className="space-y-4">
-      {Object.entries(grouped).map(([folder, files]) => (
+      {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([folder, files]) => (
         <div key={folder}>
           <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
             <FolderOpen className="h-3.5 w-3.5" />

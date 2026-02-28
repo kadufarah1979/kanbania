@@ -44,8 +44,11 @@ function listDocsRecursive(dir: string): DocFile[] {
   };
 
   walk(dir, "");
-  // Ordenar por data de modificacao (mais recente primeiro)
-  results.sort((a, b) => b.modified_at.localeCompare(a.modified_at));
+  // Ordenar alfabeticamente: pasta primeiro, depois nome do arquivo
+  results.sort((a, b) => {
+    const folderCmp = a.folder.localeCompare(b.folder);
+    return folderCmp !== 0 ? folderCmp : a.name.localeCompare(b.name);
+  });
   return results;
 }
 
