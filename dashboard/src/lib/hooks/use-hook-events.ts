@@ -14,11 +14,12 @@ export function useHookEvents(agentId?: string): { events: HookEvent[] } {
       if (msg.type !== "hook-event") return;
       if (agentId && msg.agent_id !== agentId) return;
 
+      const payload = msg.payload as Record<string, unknown> | undefined;
       const event: HookEvent = {
         agent_id: msg.agent_id,
         session_id: msg.session_id,
         hook_type: msg.hook_type,
-        tool_name: msg.tool_name,
+        tool_name: msg.tool_name ?? (payload?.tool_name as string | undefined),
         timestamp: msg.timestamp,
         payload: msg.payload,
       };
