@@ -128,6 +128,7 @@ export function AgentStatusBar({ project }: AgentStatusBarProps) {
 
   const handleWs = useCallback(
     (msg: WSMessage) => {
+      if (msg.type !== "file-change") return;
       if (
         msg.area === "board" ||
         msg.area === "logs" ||

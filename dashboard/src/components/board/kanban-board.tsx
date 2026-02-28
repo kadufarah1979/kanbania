@@ -34,6 +34,7 @@ export function KanbanBoard({ onWsStatus }: KanbanBoardProps) {
 
   const handleWsMessage = useCallback(
     (msg: WSMessage) => {
+      if (msg.type !== "file-change") return;
       if (msg.area === "board") refetch();
     },
     [refetch]
