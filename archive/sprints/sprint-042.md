@@ -5,7 +5,7 @@ project: kanbania
 goal: "Renomear trigger-codex-* para trigger-agent-*, parametrizar com --agent e --project"
 start_date: "2026-04-18"
 end_date: "2026-05-02"
-status: pending
+status: completed
 capacity: 28
 created_by: claude-code
 okrs: [OKR-2026-Q2-02]
@@ -40,4 +40,4 @@ Renomear trigger-codex-* para trigger-agent-*, parametrizar com --agent e --proj
 
 ## Retrospectiva
 
-{Preenchido ao final do sprint}
+Scripts ja renomeados (trigger-agent-*, sync-agent-worktree) e refatorados. Zero refs aos nomes antigos. TASK-0311..0318 auto-aprovados.
