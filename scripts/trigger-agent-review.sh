@@ -14,7 +14,8 @@ source "$SCRIPTS_DIR/lib/config.sh"
 
 BOARD_DIR="$KANBAN_ROOT/board"
 SYSTEM_NAME="$(cfg '.system.name' 'kanbania' | tr '[:upper:] ' '[:lower:]-')"
-MAX_DIFF_LINES=300
+MAX_DIFF_LINES=150
+MAX_GATE_LINES=30
 
 # Resolve reviewer agent from config
 REVIEWER_AGENT="$(get_reviewers | head -1)"
@@ -37,7 +38,7 @@ has_reviewer_pending() {
 }
 
 invoke_reviewer() {
-  local working_dir="$1" extra_dir="$2" prompt="$3"
+  local working_dir="$1" board_dir="$2" prompt="$3"
 
   if [ -z "$REVIEWER_EXEC_CMD" ] || [ "$REVIEWER_EXEC_CMD" = "null" ]; then
     echo "[$(date -Iseconds)] No exec_command configured for $REVIEWER_AGENT. Saving prompt to file."
@@ -48,8 +49,9 @@ invoke_reviewer() {
   fi
 
   # Substitute placeholders
+  # Use board_dir instead of full kanban_root to limit context exposed to reviewer
   local cmd="${REVIEWER_EXEC_CMD//\{\{working_dir\}\}/$working_dir}"
-  cmd="${cmd//\{\{kanban_root\}\}/$KANBAN_ROOT}"
+  cmd="${cmd//\{\{kanban_root\}\}/$board_dir}"
 
   # Split cmd into array and invoke with prompt as final arg
   local cmd_arr=()
@@ -99,10 +101,10 @@ review_task() {
     wt_dir="/tmp/${SYSTEM_NAME}-${REVIEWER_AGENT}-${project}"
   fi
 
-  # Run pre-review gates if available
+  # Run pre-review gates if available (truncated to avoid bloating prompt)
   local GATE_RESULTS=""
   if [ -x "$SCRIPTS_DIR/pre-review-check.sh" ]; then
-    GATE_RESULTS=$("$SCRIPTS_DIR/pre-review-check.sh" "$task_id" 2>&1) || true
+    GATE_RESULTS=$("$SCRIPTS_DIR/pre-review-check.sh" "$task_id" 2>&1 | head -"$MAX_GATE_LINES") || true
   fi
 
   # Card slice: review mode
@@ -162,7 +164,7 @@ $CODE_DIFF"
 
 }$PROMPT"
 
-  invoke_reviewer "$project_repo" "$wt_dir" "$FULL_PROMPT"
+  invoke_reviewer "$project_repo" "$board_dir" "$FULL_PROMPT"
 
   echo "[$(date -Iseconds)] Review complete for $task_id"
 }
