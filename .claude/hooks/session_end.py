@@ -11,6 +11,13 @@ from _shared import send_hook_event
 def main() -> None:
     ppid = os.getppid()
     session_file = f"/tmp/claude-session-{ppid}.id"
+
+    try:
+        with open(session_file, "r") as f:
+            f.read()
+    except Exception:
+        pass
+
     send_hook_event("SessionEnd", {})
 
     try:
