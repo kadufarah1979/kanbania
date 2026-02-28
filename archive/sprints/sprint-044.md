@@ -5,7 +5,7 @@ project: kanbania
 goal: "Refatorar 6 componentes e data layer para consumir config dinamico"
 start_date: "2026-05-16"
 end_date: "2026-05-30"
-status: pending
+status: completed
 capacity: 20
 created_by: claude-code
 okrs: [OKR-2026-Q2-03]
@@ -42,4 +42,4 @@ Refatorar 6 componentes e data layer para consumir config dinamico
 
 ## Retrospectiva
 
-{Preenchido ao final do sprint}
+Types, reader, use-board, kanban-board, stats route refatorados para config-driven. Build passa. TASK-0330, 0331, 0332, 0333, 0334 ja estavam implementados.
