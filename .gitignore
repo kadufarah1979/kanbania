@@ -39,3 +39,6 @@ dashboard/.next/cache/
 *.local
 logs/activity.jsonl
 logs/rework-pending.jsonl
+
+# Docs gerados por infra-analyzer e outras ferramentas (nao commitar)
+projects/*/docs/
