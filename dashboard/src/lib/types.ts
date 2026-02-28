@@ -153,12 +153,16 @@ export interface ProjectStat {
   activeSprint: string | null;
 }
 
-export interface WSMessage {
-  type: "file-change";
-  path: string;
-  event: "add" | "change" | "unlink";
-  area: "board" | "sprints" | "projects" | "logs" | "okrs" | "agents" | "config";
-}
+export type WSMessage =
+  | {
+      type: "file-change";
+      path: string;
+      event: "add" | "change" | "unlink";
+      area: "board" | "sprints" | "projects" | "logs" | "okrs" | "agents" | "config";
+    }
+  | ({ type: "hook-event" } & HookEvent)
+  | ({ type: "hitl-request" } & HitlRequest)
+  | { type: "hitl-resolved"; request_id: string; approved: boolean };
 
 export type HookType =
   | "PreToolUse"
