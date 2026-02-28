@@ -69,6 +69,7 @@ export default function ProjectBoardPage() {
 
   const handleWsMessage = useCallback(
     (msg: WSMessage) => {
+      if (msg.type !== "file-change") return;
       if (msg.area === "board") refetch();
     },
     [refetch]

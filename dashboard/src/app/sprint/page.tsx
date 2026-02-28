@@ -16,6 +16,7 @@ export default function SprintPage() {
 
   const handleWsMessage = useCallback(
     (msg: WSMessage) => {
+      if (msg.type !== "file-change") return;
       if (msg.area === "board" || msg.area === "sprints") refetch();
     },
     [refetch]

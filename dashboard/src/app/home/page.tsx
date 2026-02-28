@@ -39,6 +39,7 @@ export default function HomePage() {
 
   const handleWsMessage = useCallback(
     (msg: WSMessage) => {
+      if (msg.type !== "file-change") return;
       if (msg.area === "board" || msg.area === "projects") {
         refetchProjects();
         fetchStats();
