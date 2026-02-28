@@ -128,6 +128,24 @@ paths:
   templates: "templates"
   logs: "logs"
 
+# Projetos (gates de qualidade por tipo de stack)
+# Paths ficam em config.local.yaml (gitignored)
+projects:
+  aquario:
+    name: "Aquario"
+    description: "Projeto aquario — exemplo de configuracao de gates"
+    gates:
+      backend:
+        detect: "requirements.txt"
+        commands:
+          - "pytest"
+          - "mypy ."
+      frontend:
+        detect: "package.json"
+        commands:
+          - "tsc --noEmit"
+          - "npm run build"
+
 # Subprojetos
 # Projetos com subprojetos têm board/sprints/okrs próprios por subprojeto.
 # Adicionar entrada aqui quando um projeto for migrado para estrutura com subprojetos.
