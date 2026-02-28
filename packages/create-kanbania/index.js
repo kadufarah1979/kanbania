@@ -431,10 +431,15 @@ assigned_to: ${ws.agents[0] || 'claude-code'}
       { PORT: String(dashPort), KANBAN_ROOT: absTarget }
     )
 
+    const serverJsWs = path.join(dashDir, 'dist', 'server.js')
+    const wsExec = fs.existsSync(serverJsWs)
+      ? `${nodeBin} ${serverJsWs}`
+      : `${nodeBin} ${tsxBin} ${serverTs}`
+
     writeSystemdService(
       'kb-dashboard-ws',
       'Kanbania Dashboard - WebSocket server',
-      `${nodeBin} ${tsxBin} ${serverTs}`,
+      wsExec,
       { PORT: String(wsPort), KANBAN_ROOT: absTarget }
     )
 
