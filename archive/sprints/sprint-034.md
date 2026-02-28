@@ -5,7 +5,7 @@ project: onmidia
 goal: "Auditar IaC e ambiente PRD para identificar gaps, erros (CORS, seguranca, networking) e gerar documento de melhorias"
 start_date: "2026-02-19"
 end_date: "2026-03-05"
-status: active
+status: completed
 capacity: 21
 created_by: claude-code
 okrs: []
