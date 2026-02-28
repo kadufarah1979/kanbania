@@ -250,3 +250,56 @@ docker ps | grep dashboard
 - **Resolucao:** `kill <pid>` do processo next-server + `cp -r .next/static .next/standalone/.next/static` + reinicio limpo
 - **Como achar o PID:** `ss -tlnp | grep 8765` (mostra o pid na coluna Process)
 - **Prevencao:** Sempre matar o processo antigo antes de reiniciar — nunca confiar que um servidor sobreviveu a um `npm run build`
+
+---
+
+## Observabilidade de Agentes
+
+### O que sao os hooks
+
+O sistema registra eventos do agente Claude Code via hooks Python em `.claude/hooks/`.
+Cada vez que o agente usa uma ferramenta (Bash, Read, Write, etc.), o hook dispara e
+envia um evento ao server.ts na porta 8766.
+
+### Tipos de hook
+
+| Hook | Quando dispara | Arquivo |
+|---|---|---|
+| `PreToolUse` | Antes de executar uma ferramenta | `pre_tool_use.py` |
+| `PostToolUse` | Apos executar uma ferramenta | `post_tool_use.py` |
+| `SessionStart` | Ao iniciar uma sessao do agente | `session_start.py` |
+| `SessionEnd` | Ao encerrar uma sessao | `session_end.py` |
+| `Stop` | Ao parar o agente | `stop.py` |
+
+### Como funcionam
+
+1. Hook Python e disparado pelo Claude Code
+2. Hook le dados do stdin (input da ferramenta) e chama `send_hook_event()` em `_shared.py`
+3. `_shared.py` envia POST para `http://localhost:8766/events/hook`
+4. `handleHookEvent()` no server.ts valida, persiste em JSONL e faz broadcast via WebSocket
+5. Dashboard recebe o evento via WS e exibe no `AgentSwimLane`
+
+### Localizacao dos arquivos
+
+- Scripts: `.claude/hooks/` (raiz do repositorio)
+- Log de eventos: `logs/hooks-events.jsonl` (rotacao automatica em 10MB, mantem 500 eventos)
+- Configuracao: `.claude/settings.json` (registra os hooks no Claude Code)
+
+### Como verificar se os hooks estao ativos
+
+```bash
+cat .claude/settings.json | python3 -m json.tool
+```
+
+Deve mostrar entradas para PreToolUse, PostToolUse, SessionStart, SessionEnd e Stop.
+
+### Reiniciar o server.ts apos mudancas
+
+```bash
+# Compilar server.ts (se necessario)
+npx tsx server.ts
+
+# Ou reiniciar o processo existente
+kill $(ss -tlnp | grep 8766 | grep -oP 'pid=\K[0-9]+')
+WS_PORT=8766 KANBAN_ROOT=/home/carlosfarah/kanbania-fresh npx tsx server.ts &
+```
