@@ -5,7 +5,7 @@
 # Identificacao do sistema
 system:
   name: "kanbania"
-  language: "pt-BR"
+  language: "en"
 
 # Proprietário do sistema
 owner:
