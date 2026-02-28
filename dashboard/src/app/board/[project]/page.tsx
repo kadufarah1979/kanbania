@@ -7,7 +7,7 @@ const PROJECT_REDIRECTS: Record<string, string> = {
   mdm: "mdm-terraform",
 };
 import { AgentStatusBar } from "@/components/agents/agent-status-bar";
-import { AgentSwimLane } from "@/components/agents/agent-swim-lane";
+import { ObservabilityWidget } from "@/components/observability/observability-widget";
 import { KanbanColumn } from "@/components/board/kanban-column";
 import { TaskDialog } from "@/components/board/task-dialog";
 import { useBoard } from "@/lib/hooks/use-board";
@@ -111,7 +111,7 @@ export default function ProjectBoardPage() {
   return (
     <div className="space-y-4">
       <AgentStatusBar project={projectSlug} />
-      <AgentSwimLane />
+      <ObservabilityWidget />
         <div className="flex items-center gap-3">
           <Link
             href="/home"
