@@ -161,6 +161,18 @@ subprojects:
     - kanbania
     - tecpag
 
+# Integracao Git
+git:
+  commit_prefix: "[KANBAN]"
+  auto_push: true
+  default_branch: "main"
+
+# Notificacoes
+# Credenciais e webhook URLs ficam em config.local.yaml (gitignored).
+notifications:
+  provider: "none"
+  settings: {}
+
 # Integracao com X (Twitter)
 # Credenciais ficam em config.local.yaml (gitignored).
 x_integration:
