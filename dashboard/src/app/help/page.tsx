@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Rocket, Terminal, GitBranch, Server, FolderTree,
   Play, Square, Eye, ArrowRight, Shield, Bot, Layers, PackageOpen,
-  Plug, ListOrdered, Settings2, FileText,
+  Plug, ListOrdered, Settings2, FileText, ScrollText,
 } from "lucide-react";
 
 function CommandRow({ cmd, desc }: { cmd: string; desc: string }) {
@@ -52,6 +52,9 @@ export default function HelpPage() {
           </TabsTrigger>
           <TabsTrigger value="structure" className="gap-1.5">
             <FolderTree className="h-4 w-4" /> Estrutura
+          </TabsTrigger>
+          <TabsTrigger value="releases" className="gap-1.5">
+            <ScrollText className="h-3.5 w-3.5" /> Release Notes
           </TabsTrigger>
           <TabsTrigger value="mcp" className="gap-1.5">
             <Plug className="h-4 w-4" /> MCP Servers
@@ -776,6 +779,100 @@ priority: high
     ├── thresholds.yaml     # Limites de alerta configuráveis
     └── report_structure.yaml`}
               </pre>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="releases" className="space-y-4 mt-4">
+          {/* Sprint 091 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Sprint 091 — Observabilidade de Agentes</CardTitle>
+                <Badge variant="outline" className="text-xs">2026-02-28</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="font-semibold text-emerald-500 mb-1">Novidades</p>
+                <ul className="space-y-1 text-muted-foreground list-disc list-inside">
+                  <li><strong>AgentSwimLane</strong>: painel de swim lanes por agente no board, mostrando ferramentas em uso em tempo real</li>
+                  <li><strong>EventChip</strong>: chips compactos com ícone, ferramenta e timestamp relativo; cor por tipo de hook</li>
+                  <li><strong>Hook Events via WebSocket</strong>: <code className="bg-muted px-1 rounded">POST /events/hook</code> persiste eventos em JSONL e faz broadcast WS</li>
+                  <li><strong>useHookEvents()</strong>: hook React para subscrever eventos de agentes filtrando por <code className="bg-muted px-1 rounded">agent_id</code></li>
+                  <li><strong>WSMessage discriminated union</strong>: tipos <code className="bg-muted px-1 rounded">file-change</code>, <code className="bg-muted px-1 rounded">hook-event</code>, <code className="bg-muted px-1 rounded">hitl-request</code>, <code className="bg-muted px-1 rounded">hitl-resolved</code></li>
+                  <li><strong>Mini-router server.ts</strong>: <code className="bg-muted px-1 rounded">handleRequest()</code> substitui bloco if/else; suporte a <code className="bg-muted px-1 rounded">/events/hook</code></li>
+                  <li><strong>Log rotation</strong>: <code className="bg-muted px-1 rounded">hooks.jsonl</code> rotacionado automaticamente quando ultrapassa 5 MB</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sprint 044 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Sprint 044 — Dashboard Config-Driven</CardTitle>
+                <Badge variant="outline" className="text-xs">2026-02-28</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="font-semibold text-emerald-500 mb-1">Novidades</p>
+                <ul className="space-y-1 text-muted-foreground list-disc list-inside">
+                  <li><strong>BoardData dinâmico</strong>: tipo <code className="bg-muted px-1 rounded">Record&lt;string, Task[]&gt;</code> — colunas lidas do <code className="bg-muted px-1 rounded">config.yaml</code>, zero hardcoded</li>
+                  <li><strong>reader.ts</strong>: inicialização do board e byStatus agora dinâmicos</li>
+                  <li><strong>kanban-board.tsx</strong>: <code className="bg-muted px-1 rounded">filteredData</code> construído a partir de <code className="bg-muted px-1 rounded">displayColumns</code> do config</li>
+                  <li><strong>api/projects/stats</strong>: contagem de tasks por status totalmente dinâmica</li>
+                  <li><strong>server.ts build</strong> (TASK-0651): <code className="bg-muted px-1 rounded">npm run build</code> compila <code className="bg-muted px-1 rounded">server.ts → dist/server.js</code> via esbuild — sem dependência do tsx em produção</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sprint 039-043 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Sprints 039–043 — Config Foundation & Scripts</CardTitle>
+                <Badge variant="outline" className="text-xs">2026-02-21 → 2026-02-28</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="font-semibold text-emerald-500 mb-1">Novidades</p>
+                <ul className="space-y-1 text-muted-foreground list-disc list-inside">
+                  <li><strong>scripts/lib/config.sh</strong>: biblioteca central — <code className="bg-muted px-1 rounded">cfg()</code>, <code className="bg-muted px-1 rounded">get_columns()</code>, <code className="bg-muted px-1 rounded">get_reviewers()</code>, <code className="bg-muted px-1 rounded">resolve_board()</code>, <code className="bg-muted px-1 rounded">notify()</code></li>
+                  <li><strong>config.yaml</strong>: expandido com seções <code className="bg-muted px-1 rounded">system</code>, <code className="bg-muted px-1 rounded">workflow</code>, <code className="bg-muted px-1 rounded">agents</code>, <code className="bg-muted px-1 rounded">projects</code>, <code className="bg-muted px-1 rounded">git</code>, <code className="bg-muted px-1 rounded">notifications</code></li>
+                  <li><strong>Todos os scripts migrados</strong>: <code className="bg-muted px-1 rounded">kb.sh</code>, <code className="bg-muted px-1 rounded">board-monitor.sh</code>, <code className="bg-muted px-1 rounded">kanban-lint.sh</code>, <code className="bg-muted px-1 rounded">update-agent-status.sh</code>, <code className="bg-muted px-1 rounded">agent-heartbeat.sh</code> — todos config-driven via <code className="bg-muted px-1 rounded">$KANBAN_ROOT</code></li>
+                  <li><strong>Scripts renomeados</strong>: <code className="bg-muted px-1 rounded">trigger-agent-review/fix/next.sh</code>, <code className="bg-muted px-1 rounded">sync-agent-worktree.sh</code> (sem &quot;codex&quot; no nome)</li>
+                  <li><strong>test-config.sh</strong>: 23 testes unitários do config.sh</li>
+                  <li><strong>Dashboard</strong>: <code className="bg-muted px-1 rounded">config-reader.ts</code>, <code className="bg-muted px-1 rounded">useConfig()</code>, <code className="bg-muted px-1 rounded">GET /api/config</code>, <code className="bg-muted px-1 rounded">constants.ts</code> com KANBAN_ROOT dinâmico</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sprint 045-047 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Sprints 045–047 — Open Source Ready</CardTitle>
+                <Badge variant="outline" className="text-xs">2026-02-21 → 2026-02-28</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="font-semibold text-emerald-500 mb-1">Novidades</p>
+                <ul className="space-y-1 text-muted-foreground list-disc list-inside">
+                  <li><strong>AGENTS.md genericizado</strong>: em inglês, role-based (sem agent IDs hardcoded), referencia config.yaml</li>
+                  <li><strong>Templates de agentes</strong>: <code className="bg-muted px-1 rounded">templates/agents/en/</code> e <code className="bg-muted px-1 rounded">pt-BR/</code> — implementer, reviewer, both, pm</li>
+                  <li><strong>setup.sh</strong>: wizard interativo com modos <code className="bg-muted px-1 rounded">--quick</code>, <code className="bg-muted px-1 rounded">--detailed</code>, <code className="bg-muted px-1 rounded">--from-config</code>, <code className="bg-muted px-1 rounded">--upgrade</code></li>
+                  <li><strong>npx create-kanbania</strong>: instalador interativo completo</li>
+                  <li><strong>LICENSE</strong> (MIT), <strong>CONTRIBUTING.md</strong>, <strong>CODE_OF_CONDUCT.md</strong></li>
+                  <li><strong>.github/</strong>: issue templates (bug, feature) e PR template</li>
+                </ul>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
