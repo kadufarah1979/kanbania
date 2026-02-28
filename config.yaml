@@ -33,7 +33,7 @@ workflow:
   transitions:
     - from: "backlog"
       to: "todo"
-      allowed_roles: [implementer, reviewer]
+      allowed_roles: [implementer]
     - from: "todo"
       to: "in-progress"
       allowed_roles: [implementer]
