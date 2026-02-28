@@ -5,7 +5,7 @@ project: kanbania
 goal: "Widen types, criar config-reader.ts, endpoint /api/config, refatorar constants.ts"
 start_date: "2026-05-02"
 end_date: "2026-05-16"
-status: pending
+status: completed
 capacity: 21
 created_by: claude-code
 okrs: [OKR-2026-Q2-03]
@@ -42,4 +42,4 @@ Widen types, criar config-reader.ts, endpoint /api/config, refatorar constants.t
 
 ## Retrospectiva
 
-{Preenchido ao final do sprint}
+Todos os 10 tasks auto-aprovados: types.ts ja tem BoardColumn e AgentId como string, config-reader.ts e api/config existem, useConfig() implementado, constants.ts refatorado.
