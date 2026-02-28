@@ -30,7 +30,8 @@ def send_hook_event(hook_type: str, payload: dict) -> None:
         source_app = (
             os.environ.get("CLAUDE_SOURCE_APP")
             or os.path.basename(os.environ.get("KANBAN_ROOT", "").rstrip("/"))
-            or "kanbania"
+            or os.path.basename(os.getcwd())
+            or "unknown"
         )
 
         body = {
