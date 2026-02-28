@@ -14,17 +14,12 @@ MODE="${2:?Usage: card-slice.sh <TASK-ID> <full|rework|review|summary>}"
 source "$(dirname "$0")/lib/config.sh"
 BOARD_DIR="${KANBAN_ROOT}/board"
 
-# Find card in any column
+# Find card in any board column across all projects/subprojects
 TASK_FILE=""
-for col in in-progress review todo backlog done; do
-  if [ -f "$BOARD_DIR/$col/$TASK_ID.md" ]; then
-    TASK_FILE="$BOARD_DIR/$col/$TASK_ID.md"
-    break
-  fi
-done
+TASK_FILE=$(find "$KANBAN_ROOT" -name "$TASK_ID.md" -path "*/board/*" 2>/dev/null | head -1)
 
-if [ -z "$TASK_FILE" ]; then
-  echo "ERROR: $TASK_ID not found in board/" >&2
+if [ -z "$TASK_FILE" ] || [ ! -f "$TASK_FILE" ]; then
+  echo "ERROR: $TASK_ID not found in any board/" >&2
   exit 1
 fi
 

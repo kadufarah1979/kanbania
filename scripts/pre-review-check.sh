@@ -14,11 +14,10 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPTS_DIR/lib/config.sh"
 
 TASK_ID="${1:?Usage: pre-review-check.sh <TASK-ID>}"
-BOARD_DIR="$KANBAN_ROOT/board"
-TASK_FILE="$BOARD_DIR/review/$TASK_ID.md"
+TASK_FILE=$(find "$KANBAN_ROOT" -name "$TASK_ID.md" -path "*/board/review/*" 2>/dev/null | head -1)
 
-if [ ! -f "$TASK_FILE" ]; then
-  echo '{"error":"Task not found in review/"}' >&2
+if [ -z "$TASK_FILE" ] || [ ! -f "$TASK_FILE" ]; then
+  echo '{"error":"Task not found in any board/review/"}' >&2
   exit 1
 fi
 
