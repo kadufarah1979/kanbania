@@ -129,6 +129,7 @@ review_task() {
   # Build prompt
   local PROMPT="QA $task_id (project: $project).
 
+Card file (canonical path — use this exact path for mv/edit): $task_file
 Kanban worktree: $wt_dir
 Project repo: ${project_repo}
 
