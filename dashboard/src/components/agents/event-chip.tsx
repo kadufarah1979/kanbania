@@ -10,7 +10,7 @@ const ICON_MAP: Record<string, string> = {
   Glob: "🔍",
 };
 
-const COLOR_MAP: Record<HookType, string> = {
+const COLOR_MAP: Partial<Record<HookType, string>> = {
   PostToolUse: "bg-green-900/60 text-green-300 border-green-700",
   PreToolUse: "bg-yellow-900/60 text-yellow-300 border-yellow-700",
   SessionStart: "bg-gray-800/60 text-gray-400 border-gray-600",

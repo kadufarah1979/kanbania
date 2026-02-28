@@ -159,16 +159,23 @@ export type WSMessage =
 export type HookType =
   | "PreToolUse"
   | "PostToolUse"
+  | "PostToolUseFailure"
   | "SessionStart"
   | "SessionEnd"
   | "Stop"
-  | "Notification";
+  | "Notification"
+  | "UserPromptSubmit"
+  | "SubagentStart"
+  | "SubagentStop"
+  | "PreCompact"
+  | "PermissionRequest";
 
 export interface HookEvent {
   agent_id: string;
   session_id: string;
   hook_type: HookType;
   tool_name?: string;
+  source_app?: string;
   timestamp: string;
   payload: Record<string, unknown>;
 }

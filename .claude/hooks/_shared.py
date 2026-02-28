@@ -27,11 +27,17 @@ def send_hook_event(hook_type: str, payload: dict) -> None:
         server_url = os.environ.get("HOOK_SERVER_URL", "http://localhost:8766")
         agent_id = os.environ.get("CLAUDE_AGENT_ID", "claude-code")
         session_id = _get_session_id()
+        source_app = (
+            os.environ.get("CLAUDE_SOURCE_APP")
+            or os.path.basename(os.environ.get("KANBAN_ROOT", "").rstrip("/"))
+            or "kanbania"
+        )
 
         body = {
             "agent_id": agent_id,
             "session_id": session_id,
             "hook_type": hook_type,
+            "source_app": source_app,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "payload": payload,
         }

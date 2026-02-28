@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Zap, FolderOpen, Activity, Kanban, Home, BarChart3, HelpCircle } from "lucide-react";
+import { LayoutDashboard, Zap, FolderOpen, Activity, Kanban, Home, BarChart3, HelpCircle, Telescope } from "lucide-react";
 import { ThemeToggle } from "../theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/board", label: "Quadro", icon: LayoutDashboard },
   { href: "/sprint", label: "Sprint", icon: Zap },
   { href: "/projects", label: "Projetos", icon: FolderOpen },
+  { href: "/agents", label: "Agentes", icon: Telescope },
   { href: "/activity", label: "Atividade", icon: Activity },
   { href: "/insights", label: "Insights", icon: BarChart3 },
   { href: "/help", label: "Help", icon: HelpCircle },

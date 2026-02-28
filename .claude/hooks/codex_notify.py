@@ -12,10 +12,13 @@ from datetime import datetime, timezone
 def send_hook_event(hook_type: str, payload: dict) -> None:
     try:
         server_url = os.environ.get("HOOK_SERVER_URL", "http://localhost:8766")
+        cwd = payload.get("cwd", "")
+        source_app = os.path.basename(cwd.rstrip("/")) if cwd else "kanbania"
         body = {
             "agent_id": "codex",
             "session_id": payload.get("thread-id", ""),
             "hook_type": hook_type,
+            "source_app": source_app,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "payload": payload,
         }
