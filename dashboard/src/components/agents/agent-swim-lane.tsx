@@ -5,7 +5,7 @@ import { useHookEvents } from "@/lib/hooks/use-hook-events";
 import { EventChip } from "./event-chip";
 import type { AgentConfig, HookEvent } from "@/lib/types";
 
-const VISUAL_HOOK_TYPES = new Set(["PreToolUse", "PostToolUse"]);
+const VISUAL_HOOK_TYPES = new Set(["PreToolUse", "PostToolUse", "Stop"]);
 
 interface AgentLaneProps {
   agent: AgentConfig;
