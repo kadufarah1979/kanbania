@@ -8,6 +8,7 @@ interface EventTimelineProps {
   events: HookEvent[];
   filterAgent: string;
   filterType: string;
+  filterProject: string;
   filterSearch: string;
 }
 
@@ -15,6 +16,7 @@ export function EventTimeline({
   events,
   filterAgent,
   filterType,
+  filterProject,
   filterSearch,
 }: EventTimelineProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -24,6 +26,7 @@ export function EventTimeline({
   const filtered = events.filter((e) => {
     if (filterAgent && e.agent_id !== filterAgent) return false;
     if (filterType && e.hook_type !== filterType) return false;
+    if (filterProject && e.source_app !== filterProject) return false;
     if (filterSearch) {
       const q = filterSearch.toLowerCase();
       const toolName =

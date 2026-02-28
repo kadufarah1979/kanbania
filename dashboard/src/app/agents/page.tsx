@@ -29,6 +29,7 @@ export default function AgentsPage() {
 
   const [filterAgent, setFilterAgent] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [filterProject, setFilterProject] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
 
   const agentIds = useMemo(
@@ -36,9 +37,15 @@ export default function AgentsPage() {
     [events]
   );
 
+  const projectIds = useMemo(
+    () => Array.from(new Set(events.map((e) => e.source_app).filter(Boolean))).sort() as string[],
+    [events]
+  );
+
   const filteredCount = events.filter((e) => {
     if (filterAgent && e.agent_id !== filterAgent) return false;
     if (filterType && e.hook_type !== filterType) return false;
+    if (filterProject && e.source_app !== filterProject) return false;
     return true;
   }).length;
 
@@ -126,6 +133,20 @@ export default function AgentsPage() {
           ))}
         </select>
 
+        {/* Project filter */}
+        <select
+          value={filterProject}
+          onChange={(e) => setFilterProject(e.target.value)}
+          className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500"
+        >
+          <option value="">Todos os projetos</option>
+          {projectIds.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+
         {/* Type filter */}
         <select
           value={filterType}
@@ -149,11 +170,12 @@ export default function AgentsPage() {
           className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-48"
         />
 
-        {(filterAgent || filterType || filterSearch) && (
+        {(filterAgent || filterType || filterProject || filterSearch) && (
           <button
             onClick={() => {
               setFilterAgent("");
               setFilterType("");
+              setFilterProject("");
               setFilterSearch("");
             }}
             className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
@@ -168,6 +190,7 @@ export default function AgentsPage() {
         events={events}
         filterAgent={filterAgent}
         filterType={filterType}
+        filterProject={filterProject}
         filterSearch={filterSearch}
       />
     </div>
