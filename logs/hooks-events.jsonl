@@ -1,0 +1,3 @@
+{"hook_type":"tool_use","agent_id":"claude-code","tool":"Bash","input":{"command":"test"}}
+{"agent_id":"claude-code","session_id":"","hook_type":"PostToolUse","timestamp":"2026-02-28T14:18:11.674750+00:00","payload":{"tool_name":"Bash","tool_input":{"command":"test"},"tool_response":{}}}
+{"agent_id":"codex","session_id":"test-thread-001","hook_type":"Stop","timestamp":"2026-02-28T14:32:11.581515+00:00","payload":{"thread-id":"test-thread-001","turn-id":"turn-1","cwd":"/home/carlosfarah/kanbania-fresh","last_message":"Task concluida."}}
