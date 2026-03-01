@@ -55,7 +55,12 @@ invoke_reviewer() {
   # Split cmd into array and invoke with prompt as final arg
   local cmd_arr=()
   read -ra cmd_arr <<< "$cmd"
-  (cd "$working_dir" && "${cmd_arr[@]}" "$prompt")
+  local exit_code=0
+  (cd "$working_dir" && "${cmd_arr[@]}" "$prompt") || exit_code=$?
+  if [ "$exit_code" -ne 0 ]; then
+    echo "[$(date -Iseconds)] WARN: reviewer exited with code $exit_code for $task_id — skipping"
+  fi
+  return 0
 }
 
 # ── Review one task ───────────────────────────────────────────────────────────
