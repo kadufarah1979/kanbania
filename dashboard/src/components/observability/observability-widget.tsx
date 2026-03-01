@@ -67,7 +67,7 @@ export function ObservabilityWidget() {
       <div className="px-3 py-2 bg-gray-950/50">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-[10px] text-gray-500 uppercase tracking-widest">
-            Atividade — últimos 4 min
+            Atividade — últimas 8 horas
           </span>
         </div>
         <PulseChart events={events} />

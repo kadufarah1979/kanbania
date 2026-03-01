@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import type { HookEvent } from "@/lib/types";
 
-const BUCKET_SECONDS = 10;
-const NUM_BUCKETS = 24; // 4 minutes
+const BUCKET_SECONDS = 1200; // 20 min por bucket
+const NUM_BUCKETS = 24;     // 8 horas
 
 interface PulseChartProps {
   events: HookEvent[];
@@ -72,28 +72,32 @@ export function PulseChart({ events }: PulseChartProps) {
       if (bucket.count === 0) return;
       const barH = Math.max(2, ((bucket.count / maxCount) * (height - 8)));
       const x = i * barWidth + padding;
-      const y = height - barH;
       const bw = barWidth - padding * 2;
 
       // Opacity fades older buckets
       const opacity = 0.3 + 0.7 * (i / NUM_BUCKETS);
 
-      // Stacked bars by agent
-      let yOffset = height;
+      // Stacked bars by agent — altura minima de 4px por agente presente
+      const MIN_SEG_H = 4;
       const agents = Object.entries(bucket.byAgent);
+      const totalMinH = agents.length * MIN_SEG_H;
+      const remainH = Math.max(0, barH - totalMinH);
+
+      let yOffset = height;
       agents.forEach(([agentId, cnt]) => {
-        const segH = (cnt / bucket.count) * barH;
+        const segH = MIN_SEG_H + (cnt / bucket.count) * remainH;
         yOffset -= segH;
         const color = AGENT_COLORS[agentId] || "#6366f1";
         ctx.fillStyle = color + Math.round(opacity * 255).toString(16).padStart(2, "0");
         ctx.fillRect(x, yOffset, bw, segH);
       });
 
-      // Pulse dot on most recent bucket
+      // Pulse dot no bucket mais recente — cor do agente mais ativo
       if (i === NUM_BUCKETS - 1 && bucket.count > 0) {
+        const topAgent = agents.sort((a, b) => b[1] - a[1])[0]?.[0] ?? "claude-code";
         ctx.beginPath();
-        ctx.arc(x + bw / 2, y - 4, 3, 0, Math.PI * 2);
-        ctx.fillStyle = "#f97316";
+        ctx.arc(x + bw / 2, height - barH - 4, 3, 0, Math.PI * 2);
+        ctx.fillStyle = AGENT_COLORS[topAgent] || "#6366f1";
         ctx.fill();
       }
     });
@@ -105,7 +109,7 @@ export function PulseChart({ events }: PulseChartProps) {
     const labelInterval = 6;
     for (let i = 0; i < NUM_BUCKETS; i += labelInterval) {
       const secsAgo = (NUM_BUCKETS - i) * BUCKET_SECONDS;
-      const label = secsAgo >= 60 ? `-${Math.floor(secsAgo / 60)}m` : `-${secsAgo}s`;
+      const label = secsAgo >= 3600 ? `-${Math.floor(secsAgo / 3600)}h` : `-${Math.floor(secsAgo / 60)}m`;
       ctx.fillText(label, i * barWidth + barWidth / 2, height - 1);
     }
   }, [events]);

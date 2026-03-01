@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-const MAX_EVENTS = 300;
+export const dynamic = "force-dynamic";
+
+const MAX_EVENTS = 2000;
 
 export async function GET() {
   try {

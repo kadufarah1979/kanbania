@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useWebSocket } from "./use-websocket";
 import type { HookEvent, WSMessage } from "../types";
 
-const MAX_EVENTS = 500;
+const MAX_EVENTS = 2000;
 
 export function useAllHookEvents(): {
   events: HookEvent[];
