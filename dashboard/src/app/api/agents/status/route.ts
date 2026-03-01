@@ -95,7 +95,11 @@ export function GET(request: Request) {
       continue;
     }
 
-    // 2. Check review tasks where agent is requested reviewer
+    // 2. Check review tasks where agent is requested reviewer.
+    // Sort by priority (critical→high→medium→low) then by task ID ascending —
+    // same ordering used by trigger-agent-review.sh, so the displayed task
+    // matches what the reviewer agent will actually process next.
+    const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
     const reviewTask = visibleTasks
       .filter(
         (t) =>
@@ -103,10 +107,14 @@ export function GET(request: Request) {
           Array.isArray(t.review_requested_from) &&
           t.review_requested_from.includes(agent)
       )
-      .sort(
-        (a, b) =>
-          new Date(taskUpdatedAt(b)).getTime() - new Date(taskUpdatedAt(a)).getTime()
-      )[0];
+      .sort((a, b) => {
+        const pa = PRIORITY_RANK[a.priority ?? "medium"] ?? 2;
+        const pb = PRIORITY_RANK[b.priority ?? "medium"] ?? 2;
+        if (pa !== pb) return pa - pb;
+        const na = parseInt((a.id ?? "").replace(/\D/g, ""), 10) || 0;
+        const nb = parseInt((b.id ?? "").replace(/\D/g, ""), 10) || 0;
+        return na - nb;
+      })[0];
 
     if (reviewTask) {
       statuses.push({
