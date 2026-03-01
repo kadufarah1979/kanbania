@@ -191,10 +191,10 @@ else
     sortable+=("$(printf '%d|%08d|%s' "$rank" "$((10#$num))" "$task_id")")
   done < <(find "$KANBAN_ROOT" -path "*/board/review/*.md" 2>/dev/null | sort)
   if [ "${#sortable[@]}" -gt 0 ]; then
-    top=$(printf '%s\n' "${sortable[@]}" | sort -t'|' -k1,1n -k2,2n | head -1)
-    task_id="${top##*|}"
     found=true
-    review_task "$task_id"
+    while IFS='|' read -r _ _ task_id; do
+      review_task "$task_id"
+    done < <(printf '%s\n' "${sortable[@]}" | sort -t'|' -k1,1n -k2,2n)
   fi
   if ! $found; then
     echo "[$(date -Iseconds)] No tasks pending QA review"
