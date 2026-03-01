@@ -49,9 +49,8 @@ invoke_reviewer() {
   fi
 
   # Substitute placeholders
-  # Use board_dir instead of full kanban_root to limit context exposed to reviewer
   local cmd="${REVIEWER_EXEC_CMD//\{\{working_dir\}\}/$working_dir}"
-  cmd="${cmd//\{\{kanban_root\}\}/$board_dir}"
+  cmd="${cmd//\{\{kanban_root\}\}/$KANBAN_ROOT}"
 
   # Split cmd into array and invoke with prompt as final arg
   local cmd_arr=()
