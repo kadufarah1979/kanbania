@@ -74,17 +74,33 @@ find_task() {
     fi
 
     # Reviewers and both: claim from review (search all board/review/ dirs)
+    # Sort by priority (critical=0, high=1, medium=2, low=3) then by task ID ascending —
+    # must match the ordering used by the dashboard API (/api/agents/status).
     if [[ "$AGENT_ROLE" == "reviewer" || "$AGENT_ROLE" == "both" ]]; then
-        while IFS= read -r f; do
-            [ -f "$f" ] || continue
-            grep -q "review_requested_from:.*${AGENT}" "$f" || continue
-            # Skip already actioned
-            grep -q 'action: *qa_approved' "$f" && continue
-            grep -q 'action: *qa_changes_requested' "$f" && continue
-            # Return full path so run_task uses the correct file
-            echo "$f"
+        local next_file
+        next_file=$(
+            while IFS= read -r f; do
+                [ -f "$f" ] || continue
+                grep -q "review_requested_from:.*${AGENT}" "$f" || continue
+                grep -q 'action: *qa_approved' "$f" && continue
+                grep -q 'action: *qa_changes_requested' "$f" && continue
+                priority=$(grep "^priority:" "$f" 2>/dev/null | head -1 | awk '{print $2}')
+                case "$priority" in
+                    critical) rank=0 ;;
+                    high)     rank=1 ;;
+                    medium)   rank=2 ;;
+                    low)      rank=3 ;;
+                    *)        rank=2 ;;
+                esac
+                task_num=$(basename "$f" .md | sed 's/[^0-9]//g')
+                printf '%d %06d %s\n' "$rank" "${task_num:-999999}" "$f"
+            done < <(find "$KANBAN_ROOT" -path "*/board/review/*.md" 2>/dev/null) \
+            | sort -k1,1n -k2,2n | head -1 | awk '{print $3}'
+        )
+        if [[ -n "$next_file" ]]; then
+            echo "$next_file"
             return 0
-        done < <(find "$KANBAN_ROOT" -path "*/board/review/*.md" 2>/dev/null | sort)
+        fi
     fi
 
     return 1
