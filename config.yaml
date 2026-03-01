@@ -26,7 +26,7 @@ agents:
     role: "reviewer"
     color: "#10b981"
     wip_limit: 1
-    exec_command: "codex exec --full-auto --model gpt-5.3-codex -C {{working_dir}} --add-dir {{kanban_root}}"
+    exec_command: "codex exec --full-auto --model gpt-5.3-codex-spark -C {{working_dir}} --add-dir {{kanban_root}}"
 
 # Workflow de transicoes e triggers
 workflow:
