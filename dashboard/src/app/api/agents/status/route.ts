@@ -5,10 +5,13 @@ import { KANBAN_ROOT } from "@/lib/constants";
 
 export interface AgentStatus {
   agent: string;
-  status: "idle" | "working" | "reviewing" | "waiting" | "offline";
+  status: "active" | "working" | "reviewing" | "queued" | "idle" | "offline";
   task_id: string | null;
+  task_priority: string | null;
   description: string;
-  updated_at: string;
+  updated_at: string;          // última atividade real (hook event), nunca data de task
+  task_queued_at: string | null; // quando a task entrou na fila (data da task)
+  queue_depth: number;          // qtd de tasks pendentes para este agente
 }
 
 export const dynamic = "force-dynamic";
@@ -57,6 +60,35 @@ function lastActivityEntry(agent: string): { timestamp: string; entity_id?: stri
   return items.find((a) => a.agent === agent) || null;
 }
 
+/** Get the most recent hook event timestamp for an agent from hooks-events.jsonl. */
+function getLastHookTimestamp(agent: string): string | null {
+  try {
+    const logPath = `${KANBAN_ROOT}/logs/hooks-events.jsonl`;
+    if (!fs.existsSync(logPath)) return null;
+    const lines = fs.readFileSync(logPath, "utf-8").split("\n").filter(Boolean);
+    for (let i = lines.length - 1; i >= Math.max(0, lines.length - 500); i--) {
+      try {
+        const e = JSON.parse(lines[i]);
+        if (e.agent_id === agent && e.timestamp) return e.timestamp;
+      } catch { /* skip */ }
+    }
+  } catch { /* skip */ }
+  return null;
+}
+
+/** Returns true if the agent heartbeat is alive (<3 min). */
+function isHeartbeatAlive(agent: string): boolean {
+  const heartbeatPath = `${KANBAN_ROOT}/agents/${agent}.heartbeat`;
+  try {
+    const stat = fs.statSync(heartbeatPath);
+    return Date.now() - stat.mtimeMs < 3 * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
+const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
 export function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const projectFilter = searchParams.get("project") ?? projectFromReferer(request);
@@ -70,8 +102,15 @@ export function GET(request: Request) {
   const statuses: AgentStatus[] = [];
 
   for (const agent of configuredAgents) {
-    // 1. Check in-progress tasks where the agent is assigned AND was the last actor
-    //    (avoids showing "Trabalhando" on tasks moved to in-progress by codex rejection)
+    const hookTs = getLastHookTimestamp(agent);
+    const isAlive = isHeartbeatAlive(agent);
+    const isReallyActive = hookTs !== null && Date.now() - new Date(hookTs).getTime() < 2 * 60 * 1000;
+
+    // Fallback updated_at: hook timestamp, then last activity entry, then now
+    const lastEntry = lastActivityEntry(agent);
+    const updatedAt = hookTs ?? lastEntry?.timestamp ?? new Date().toISOString();
+
+    // In-progress tasks assigned to agent
     const workingTasks = visibleTasks
       .filter((t) => t.status === "in-progress" && t.assigned_to === agent)
       .sort(
@@ -79,28 +118,12 @@ export function GET(request: Request) {
           new Date(taskUpdatedAt(b)).getTime() - new Date(taskUpdatedAt(a)).getTime()
       );
 
-    // Prefer tasks where agent was the last actor (actively working)
+    // Prefer tasks where agent was the last actor
     const activeWork = workingTasks.find((t) => lastActorIsAgent(t, agent));
-    // Fall back to any assigned task if the agent has recent activity on it
     const assignedWork = workingTasks[0];
 
-    if (activeWork) {
-      statuses.push({
-        agent,
-        status: "working",
-        task_id: activeWork.id,
-        description: activeWork.title,
-        updated_at: taskUpdatedAt(activeWork),
-      });
-      continue;
-    }
-
-    // 2. Check review tasks where agent is requested reviewer.
-    // Sort by priority (critical→high→medium→low) then by task ID ascending —
-    // same ordering used by trigger-agent-review.sh, so the displayed task
-    // matches what the reviewer agent will actually process next.
-    const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-    const reviewTask = visibleTasks
+    // Review tasks where agent is requested reviewer
+    const reviewTasks = visibleTasks
       .filter(
         (t) =>
           t.status === "review" &&
@@ -114,67 +137,105 @@ export function GET(request: Request) {
         const na = parseInt((a.id ?? "").replace(/\D/g, ""), 10) || 0;
         const nb = parseInt((b.id ?? "").replace(/\D/g, ""), 10) || 0;
         return na - nb;
-      })[0];
+      });
 
-    if (reviewTask) {
+    const reviewTask = reviewTasks[0] ?? null;
+
+    // queue_depth = review tasks + in-progress assigned tasks
+    const queueDepth = reviewTasks.length + workingTasks.length;
+
+    // Determine status using the new model
+    // active   → hook event nos últimos 2 min
+    // working  → heartbeat vivo + in-progress onde agent foi último actor
+    // reviewing→ heartbeat vivo + task em review na fila
+    // queued   → heartbeat MORTO mas tem task pendente
+    // idle     → heartbeat vivo, sem tasks ativas
+    // offline  → heartbeat morto, sem tasks ativas
+
+    if (isReallyActive) {
+      const contextTask = activeWork ?? assignedWork ?? reviewTask ?? null;
+      statuses.push({
+        agent,
+        status: "active",
+        task_id: contextTask?.id ?? null,
+        task_priority: contextTask?.priority ?? null,
+        description: contextTask?.title ?? "Executando",
+        updated_at: updatedAt,
+        task_queued_at: contextTask ? taskUpdatedAt(contextTask) : null,
+        queue_depth: queueDepth,
+      });
+      continue;
+    }
+
+    if (isAlive && activeWork) {
+      statuses.push({
+        agent,
+        status: "working",
+        task_id: activeWork.id,
+        task_priority: activeWork.priority ?? null,
+        description: activeWork.title,
+        updated_at: updatedAt,
+        task_queued_at: taskUpdatedAt(activeWork),
+        queue_depth: queueDepth,
+      });
+      continue;
+    }
+
+    if (isAlive && reviewTask) {
       statuses.push({
         agent,
         status: "reviewing",
         task_id: reviewTask.id,
+        task_priority: reviewTask.priority ?? null,
         description: reviewTask.title,
-        updated_at: taskUpdatedAt(reviewTask),
+        updated_at: updatedAt,
+        task_queued_at: taskUpdatedAt(reviewTask),
+        queue_depth: queueDepth,
       });
       continue;
     }
 
-    // 3. If agent has assigned in-progress tasks but wasn't last actor,
-    //    show as "waiting" (task returned from review, agent hasn't started rework)
-    if (assignedWork) {
+    if (!isAlive && (reviewTask || assignedWork)) {
+      const pendingTask = reviewTask ?? assignedWork!;
       statuses.push({
         agent,
-        status: "waiting",
-        task_id: assignedWork.id,
-        description: `Rework pendente: ${assignedWork.title}`,
-        updated_at: taskUpdatedAt(assignedWork),
+        status: "queued",
+        task_id: pendingTask.id,
+        task_priority: pendingTask.priority ?? null,
+        description: pendingTask.title,
+        updated_at: updatedAt,
+        task_queued_at: taskUpdatedAt(pendingTask),
+        queue_depth: queueDepth,
       });
       continue;
     }
 
-    // 4. Idle — use activity log for context
-    const lastEntry = lastActivityEntry(agent);
-    const idleDesc = lastEntry?.entity_id
-      ? `Ultima acao: ${lastEntry.action || "?"} ${lastEntry.entity_id}`
-      : "Sem atividade em andamento";
-
-    // 4b. Check heartbeat — if stale or missing, agent is offline
-    // Heartbeat em KANBAN_ROOT/agents/ para garantir acesso pelo servidor Next.js
-    const heartbeatPath = `${KANBAN_ROOT}/agents/${agent}.heartbeat`;
-    let isOffline = false;
-    try {
-      const stat = fs.statSync(heartbeatPath);
-      const ageMs = Date.now() - stat.mtimeMs;
-      if (ageMs > 3 * 60 * 1000) isOffline = true;
-    } catch {
-      isOffline = true;
-    }
-
-    if (isOffline) {
+    if (isAlive) {
+      const idleDesc = lastEntry?.entity_id
+        ? `Ultima acao: ${lastEntry.action || "?"} ${lastEntry.entity_id}`
+        : "Sem atividade em andamento";
       statuses.push({
         agent,
-        status: "offline",
+        status: "idle",
         task_id: null,
-        description: "Loop parado",
-        updated_at: lastEntry?.timestamp || new Date().toISOString(),
+        task_priority: null,
+        description: idleDesc,
+        updated_at: updatedAt,
+        task_queued_at: null,
+        queue_depth: 0,
       });
       continue;
     }
 
     statuses.push({
       agent,
-      status: "idle",
+      status: "offline",
       task_id: null,
-      description: idleDesc,
-      updated_at: lastEntry?.timestamp || new Date().toISOString(),
+      task_priority: null,
+      description: "Loop parado",
+      updated_at: updatedAt,
+      task_queued_at: null,
+      queue_depth: 0,
     });
   }
 
