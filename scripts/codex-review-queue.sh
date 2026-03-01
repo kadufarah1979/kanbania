@@ -15,7 +15,6 @@ set -euo pipefail
 
 source "$(dirname "$0")/lib/config.sh"
 KANBAN_DIR="${KANBAN_ROOT}"
-REVIEW_DIR="${KANBAN_ROOT}/board/review"
 
 SESSION_PROJECT="${1:-}"
 
@@ -26,15 +25,9 @@ if [ -z "$SESSION_PROJECT" ]; then
   exit 1
 fi
 
-if [ ! -d "$REVIEW_DIR" ]; then
-  echo "PROJECT: $SESSION_PROJECT"
-  echo "---"
-  echo "Nenhum card em review."
-  exit 0
-fi
-
 declare -A CARD_PROJECT
 declare -A CARD_PRIORITY
+declare -A CARD_PATH
 declare -a PROJECT_TASKS=()
 declare -a ALL_TASKS=()
 
@@ -48,17 +41,18 @@ rank_priority() {
   esac
 }
 
-for f in "$REVIEW_DIR"/TASK-*.md; do
+while IFS= read -r f; do
   [ -f "$f" ] || continue
 
   task_id=$(basename "$f" .md)
   project=$(grep '^project:' "$f" | head -1 | sed 's/^project:\s*//' | tr -d '"' | tr -d ' ')
   priority=$(grep '^priority:' "$f" | head -1 | sed 's/^priority:\s*//' | tr -d '"' | tr -d ' ')
+  CARD_PATH["$task_id"]="$f"
 
   CARD_PROJECT["$task_id"]="$project"
   CARD_PRIORITY["$task_id"]="${priority:-medium}"
   ALL_TASKS+=("$task_id")
-done
+done < <(find "$KANBAN_DIR" -path "*/board/review/TASK-*.md" | sort)
 
 if [ "${#ALL_TASKS[@]}" -eq 0 ]; then
   echo "PROJECT: ${SESSION_PROJECT:-none}"
