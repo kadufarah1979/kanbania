@@ -3047,3 +3047,22 @@ timestamp:2026-02-22T21:52:13-03:00
 {"timestamp":"2026-03-01T13:45:32-03:00","actor":"codex","action":"qa_changes_requested","card_id":"TASK-0676","project":"aquario","subproject":"app-android","from_column":"review","to_column":"in-progress","reason":"ProfileScreen entregue sem upload de avatar, edicao de bio, grid de badges e estatisticas exigidas no card."}
 {"ts":"2026-03-01T10:00:00-03:00","agent":"claude-code","action":"fixed","task":"TASK-0669","note":"Corrigidos platform em fcm-token e revision id duplicado Alembic. Card movido para review."}
 {"ts":"2026-03-01T10:00:00-03:00","agent":"claude-code","action":"fixed","task":"TASK-0669","note":"Corrigidos platform em fcm-token e revision id duplicado Alembic. Card movido para review."}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0663","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0664","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0666","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0676","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0680","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0684","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0685","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0686","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0687","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0688","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0689","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0690","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0698","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0699","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0700","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0701","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0702","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0703","action":"moved_to_review","from":"in-progress","to":"review"}
+{"ts":"2026-03-01T18:16:07-03:00","agent":"claude-code","task":"TASK-0704","action":"moved_to_review","from":"in-progress","to":"review"}
