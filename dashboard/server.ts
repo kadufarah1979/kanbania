@@ -233,11 +233,18 @@ function getArea(filePath: string): string | null {
   if (rel.startsWith("archive/")) return "board";
   if (rel.startsWith("board/")) return "board";
   if (rel.startsWith("sprints/")) return "sprints";
-  if (rel.startsWith("projects/")) return "projects";
   if (rel.startsWith("logs/")) return "logs";
   if (rel.startsWith("okrs/")) return "okrs";
   if (rel.startsWith("agents/")) return "agents";
   if (rel === "config.yaml") return "config";
+  // projects/ paths: classify by subdirectory type so subproject boards/sprints/okrs
+  // trigger the correct cache invalidations and WebSocket area events.
+  if (rel.startsWith("projects/")) {
+    if (/\/board\//.test(rel)) return "board";
+    if (/\/sprints\//.test(rel)) return "sprints";
+    if (/\/okrs\//.test(rel)) return "okrs";
+    return "projects";
+  }
   return null;
 }
 
@@ -439,19 +446,19 @@ watcher.on("all", (event, filePath) => {
 
   const rel = path.relative(KANBAN_ROOT, filePath);
 
-  // Check sprint completion when files move to done/
-  if (rel.startsWith("board/done/") && (event === "add" || event === "change")) {
+  // Check sprint completion when files move to done/ (global or subproject board)
+  if (/(?:^|\/board\/)done\//.test(rel) && (event === "add" || event === "change")) {
     if (sprintCheckTimer) clearTimeout(sprintCheckTimer);
     sprintCheckTimer = setTimeout(checkSprintCompletion, 2000);
   }
 
   // Detect codex rejection (card entering in-progress/ with rejected_qa)
-  if (rel.startsWith("board/in-progress/") && rel.endsWith(".md") && event === "add") {
+  if (/(?:^|\/board\/)in-progress\//.test(rel) && rel.endsWith(".md") && event === "add") {
     setTimeout(() => detectRework(path.join(KANBAN_ROOT, rel)), 1000);
   }
 
-  // Auto-trigger reviewer when a card enters board/review/
-  if (rel.startsWith("board/review/") && rel.endsWith(".md") && event === "add") {
+  // Auto-trigger reviewer when a card enters board/review/ (global or subproject board)
+  if (/(?:^|\/board\/)review\//.test(rel) && rel.endsWith(".md") && event === "add") {
     if (reviewTriggerTimer) clearTimeout(reviewTriggerTimer);
     reviewTriggerTimer = setTimeout(() => { triggerReview(); reviewTriggerTimer = null; }, 1000);
   }
